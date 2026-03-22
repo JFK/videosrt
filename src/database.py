@@ -30,8 +30,12 @@ async def init_db() -> None:
     ]:
         d.mkdir(parents=True, exist_ok=True)
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Run Alembic migrations (creates tables + applies schema changes)
+    from alembic import command
+    from alembic.config import Config
+
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
     # Load custom pricing from DB
     from src.services.cost import load_pricing_from_db

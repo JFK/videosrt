@@ -104,6 +104,21 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 Type: feat, fix, refactor, test, docs, chore
 Scope: api, service, ui, db, infra
 
+## Database Migrations (Alembic)
+
+Migrations run automatically on app startup. When changing models:
+
+```bash
+# Generate migration after model changes
+alembic revision --autogenerate -m "description of change"
+
+# Apply manually (also runs on startup)
+alembic upgrade head
+
+# Check current version
+alembic current
+```
+
 ## Testing
 
 ```bash
