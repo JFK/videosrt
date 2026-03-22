@@ -1,38 +1,38 @@
-# VideoSRT - 開発ガイド
+# VideoSRT - Development Guide
 
-## プロジェクト概要
+## Project Overview
 
-MP4動画からAI文字起こしでSRT字幕を生成し、YouTubeメタデータ自動生成・動画編集（字幕埋め込み・ロゴ追加）まで行うWebアプリ。
+Web application that generates SRT subtitle files from MP4 videos using AI transcription, with YouTube metadata auto-generation and video editing (subtitle embedding, logo overlay).
 
-## 技術スタック
+## Tech Stack
 
 - **Backend**: FastAPI (Python 3.11+)
 - **UI**: Jinja2 + HTMX + Alpine.js + Tailwind CSS (CDN)
 - **DB**: SQLite (SQLAlchemy 2.0 async + aiosqlite)
-- **文字起こし**: OpenAI Whisper API / Google Gemini API
-- **メタデータ生成**: OpenAI GPT / Google Gemini
-- **動画処理**: ffmpeg
-- **フォント**: Noto Sans CJK JP
-- **デプロイ**: Docker (単一コンテナ)
+- **Transcription**: OpenAI Whisper API / Google Gemini API
+- **Metadata Generation**: OpenAI GPT / Google Gemini
+- **Video Processing**: ffmpeg
+- **Font**: Noto Sans CJK JP (free, installed via apt-get in Docker)
+- **Deployment**: Docker (single container)
 
-## 開発環境セットアップ
+## Development Setup
 
 ```bash
-# 依存関係インストール
+# Install dependencies
 pip install -e ".[dev]"
 
-# 暗号化キー生成
+# Generate encryption key
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-# → .env に ENCRYPTION_KEY=<生成されたキー> を設定
+# Set ENCRYPTION_KEY=<generated key> in .env
 
-# 開発サーバー起動
+# Run dev server
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
-# Docker で起動
+# Docker
 docker compose up --build
 ```
 
-## ディレクトリ構造
+## Directory Structure
 
 ```
 src/
@@ -41,39 +41,39 @@ src/
 ├── database.py      # SQLAlchemy
 ├── templating.py    # Jinja2 templates
 ├── models/          # ORM models (Job, Setting, CostLog)
-├── services/        # ビジネスロジック
-│   ├── audio.py     # ffmpeg音声抽出
+├── services/        # Business logic
+│   ├── audio.py     # ffmpeg audio extraction
 │   ├── whisper.py   # OpenAI Whisper API
 │   ├── gemini.py    # Google Gemini API
-│   ├── transcribe.py # オーケストレーター
-│   ├── srt.py       # SRT生成
-│   ├── metadata.py  # YouTubeメタデータ生成
-│   ├── video_edit.py # 動画編集 (字幕埋め込み・ロゴ)
-│   ├── crypto.py    # API鍵暗号化
-│   └── cost.py      # コスト計算
-├── api/             # APIルーター
-│   ├── pages.py     # HTMLページ
-│   ├── jobs.py      # ジョブCRUD
-│   ├── settings.py  # 設定管理
-│   └── costs.py     # コストダッシュボード
-└── templates/       # Jinja2テンプレート
+│   ├── transcribe.py # Orchestrator
+│   ├── srt.py       # SRT generation
+│   ├── metadata.py  # YouTube metadata generation
+│   ├── video_edit.py # Video editing (subtitle embed / logo)
+│   ├── crypto.py    # API key encryption
+│   ├── cost.py      # Cost calculation
+│   └── utils.py     # Shared utilities
+├── api/             # API routers
+│   ├── pages.py     # HTML pages
+│   ├── jobs.py      # Job CRUD
+│   ├── settings.py  # Settings management
+│   └── costs.py     # Cost dashboard
+└── templates/       # Jinja2 templates
 ```
 
-## コーディング規約
+## Coding Conventions
 
-- **Python**: 型ヒント必須、ruff でフォーマット・リント
-- **命名**: snake_case (関数/変数)、PascalCase (クラス)
-- **非同期**: async/await を使用 (SQLAlchemy async, asyncio subprocess)
-- **テスト**: pytest + pytest-asyncio
+- **Python**: Type hints required, ruff for formatting/linting
+- **Naming**: snake_case (functions/variables), PascalCase (classes)
+- **Async**: Use async/await (SQLAlchemy async, asyncio subprocess)
+- **Tests**: pytest + pytest-asyncio
+- **Language**: Code and comments in English
 
-## コミットメッセージ
+## Commit Messages
 
-Conventional Commits 形式:
+Conventional Commits format:
 
 ```
 <type>(<scope>): <subject>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
@@ -81,19 +81,19 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 Type: feat, fix, refactor, test, docs, chore
 Scope: api, service, ui, db, infra
 
-## テスト
+## Testing
 
 ```bash
-pytest                    # テスト実行
-pytest --cov              # カバレッジ
+pytest                    # Run tests
+pytest --cov              # Coverage
 ruff check src/           # Lint
 ruff format src/          # Format
 ```
 
-## 環境変数
+## Environment Variables
 
-| 変数 | 説明 | 必須 |
-|------|------|------|
-| ENCRYPTION_KEY | Fernet暗号化キー | Yes |
+| Variable | Description | Required |
+|----------|-------------|----------|
+| ENCRYPTION_KEY | Fernet encryption key | Yes |
 
-API鍵はWeb UIの Settings 画面で設定（DB保存、暗号化）。
+API keys are configured via the Settings page in the web UI (stored encrypted in DB).

@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -7,24 +9,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import settings
 from src.models import Job, Setting
 from src.services.audio import extract_audio, extract_audio_mp3, get_audio_duration, split_audio
-from src.services.cost import estimate_gemini_cost, estimate_whisper_cost, log_cost
+from src.services.cost import estimate_gemini_cost, estimate_llm_cost, estimate_whisper_cost, log_cost
 from src.services.crypto import decrypt
 from src.services.srt import generate_srt, save_srt
 
+logger = logging.getLogger(__name__)
+
 
 async def _get_api_key(session: AsyncSession, provider: str) -> str:
-    """Get decrypted API key for provider."""
+    """Get decrypted API key for the given transcription provider."""
     key_name = "openai" if provider == "whisper" else "google"
     db_key = f"api_key.{key_name}"
     result = await session.execute(select(Setting).where(Setting.key == db_key))
     setting = result.scalar_one_or_none()
     if not setting:
-        raise RuntimeError(f"API key for {key_name} is not configured. Please set it in Settings.")
+        raise RuntimeError(f"API key for {key_name} is not configured. Set it in Settings.")
     return decrypt(setting.value)
 
 
 async def _get_model(session: AsyncSession, provider: str) -> str:
-    """Get configured LLM model for provider."""
+    """Get configured LLM model for the given provider."""
     model_key = "openai" if provider == "whisper" else "gemini"
     db_key = f"model.{model_key}"
     result = await session.execute(select(Setting).where(Setting.key == db_key))
@@ -35,73 +39,94 @@ async def _get_model(session: AsyncSession, provider: str) -> str:
 
 
 async def process_transcription(job: Job, session: AsyncSession) -> None:
-    """Main transcription pipeline."""
+    """Main transcription pipeline: extract audio -> transcribe -> SRT -> metadata."""
     mp4_path = settings.uploads_dir / f"{job.id}.mp4"
     if not mp4_path.exists():
         raise FileNotFoundError(f"Upload file not found: {mp4_path}")
 
     api_key = await _get_api_key(session, job.provider)
+    audio_path: Path | None = None
 
-    # Step 1: Extract audio
-    job.status = "extracting"
-    await session.commit()
+    try:
+        # Step 1: Extract audio
+        job.status = "extracting"
+        await session.commit()
 
+        if job.provider == "whisper":
+            audio_path = settings.audio_dir / f"{job.id}.wav"
+            duration = await extract_audio(mp4_path, audio_path)
+        else:
+            audio_path = settings.audio_dir / f"{job.id}.mp3"
+            duration = await extract_audio_mp3(mp4_path, audio_path)
+
+        job.audio_duration = duration
+        await session.commit()
+
+        # Step 2: Transcribe
+        job.status = "transcribing"
+        await session.commit()
+
+        segments = await _run_transcription(job, session, audio_path, api_key, duration)
+
+        # Step 3: Generate and save SRT
+        srt_content = generate_srt(segments)
+        srt_path = settings.srt_dir / f"{job.id}.srt"
+        save_srt(srt_content, srt_path)
+        job.srt_path = str(srt_path)
+
+        # Step 4: Generate metadata if enabled
+        if job.enable_metadata:
+            job.status = "generating_metadata"
+            await session.commit()
+            await _run_metadata_generation(job, session, srt_content, api_key)
+
+        # Done
+        job.status = "completed"
+        job.completed_at = datetime.now(UTC)
+        await session.commit()
+
+    finally:
+        # Cleanup temporary files regardless of success/failure
+        _cleanup_temp_files(job.id, audio_path)
+
+
+def _cleanup_temp_files(job_id: str, audio_path: Path | None) -> None:
+    """Remove temporary upload and audio files."""
+    mp4_path = settings.uploads_dir / f"{job_id}.mp4"
+    mp4_path.unlink(missing_ok=True)
+
+    if audio_path:
+        audio_path.unlink(missing_ok=True)
+        # Clean up chunks
+        for chunk in audio_path.parent.glob(f"{audio_path.stem}_chunk*"):
+            chunk.unlink(missing_ok=True)
+
+
+async def _run_transcription(
+    job: Job, session: AsyncSession, audio_path: Path, api_key: str, duration: float
+) -> list[dict]:
+    """Run transcription with the configured provider and log cost."""
     if job.provider == "whisper":
-        audio_path = settings.audio_dir / f"{job.id}.wav"
-        duration = await extract_audio(mp4_path, audio_path)
-    else:
-        audio_path = settings.audio_dir / f"{job.id}.mp3"
-        duration = await extract_audio_mp3(mp4_path, audio_path)
-
-    job.audio_duration = duration
-    await session.commit()
-
-    # Step 2: Transcribe
-    job.status = "transcribing"
-    await session.commit()
-
-    if job.provider == "whisper":
-        segments = await _transcribe_whisper(audio_path, api_key, job.language, duration)
+        segments = await _transcribe_whisper(audio_path, api_key, job.language)
         cost = estimate_whisper_cost(duration)
         await log_cost(session, job.id, "whisper", "whisper-1", "transcription", cost, audio_duration=duration)
     else:
         model = await _get_model(session, job.provider)
-        segments, input_tokens, output_tokens = await _transcribe_gemini(audio_path, api_key, job.language, model)
+        from src.services.gemini import transcribe_with_gemini
+
+        segments, input_tokens, output_tokens = await transcribe_with_gemini(
+            audio_path, api_key, job.language, model
+        )
         cost = estimate_gemini_cost(duration, output_tokens, model)
         await log_cost(
             session, job.id, "gemini", model, "transcription", cost,
             audio_duration=duration, input_tokens=input_tokens, output_tokens=output_tokens,
         )
 
-    # Step 3: Generate and save SRT
-    srt_content = generate_srt(segments)
-    srt_path = settings.srt_dir / f"{job.id}.srt"
-    save_srt(srt_content, srt_path)
-    job.srt_path = str(srt_path)
-
-    # Step 4: Generate metadata if enabled
-    if job.enable_metadata:
-        job.status = "generating_metadata"
-        await session.commit()
-        await _generate_metadata(job, session, srt_content, api_key)
-
-    # Done
-    job.status = "completed"
-    job.completed_at = datetime.now(UTC)
-    await session.commit()
-
-    # Cleanup temporary files
-    for p in [audio_path, mp4_path]:
-        if p.exists():
-            p.unlink()
-    # Clean up chunks
-    for chunk in audio_path.parent.glob(f"{audio_path.stem}_chunk*"):
-        chunk.unlink()
+    return segments
 
 
-async def _transcribe_whisper(
-    audio_path: Path, api_key: str, language: str | None, duration: float
-) -> list[dict]:
+async def _transcribe_whisper(audio_path: Path, api_key: str, language: str | None) -> list[dict]:
     """Transcribe with Whisper, handling chunking for large files."""
     from src.services.whisper import transcribe_with_whisper
 
@@ -109,31 +134,27 @@ async def _transcribe_whisper(
     if len(chunks) == 1:
         return await transcribe_with_whisper(audio_path, api_key, language)
 
-    all_segments = []
+    all_segments: list[dict] = []
     offset = 0.0
     for chunk_path in chunks:
         chunk_duration = await get_audio_duration(chunk_path)
         segments = await transcribe_with_whisper(chunk_path, api_key, language)
+        # Apply offset without mutating original segments
         for seg in segments:
-            seg["start"] += offset
-            seg["end"] += offset
-        all_segments.extend(segments)
+            all_segments.append({
+                "start": seg["start"] + offset,
+                "end": seg["end"] + offset,
+                "text": seg["text"],
+            })
         offset += chunk_duration
 
     return all_segments
 
 
-async def _transcribe_gemini(
-    audio_path: Path, api_key: str, language: str | None, model: str
-) -> tuple[list[dict], int, int]:
-    """Transcribe with Gemini."""
-    from src.services.gemini import transcribe_with_gemini
-
-    return await transcribe_with_gemini(audio_path, api_key, language, model)
-
-
-async def _generate_metadata(job: Job, session: AsyncSession, srt_content: str, api_key: str) -> None:
-    """Generate YouTube metadata using LLM."""
+async def _run_metadata_generation(
+    job: Job, session: AsyncSession, srt_content: str, api_key: str
+) -> None:
+    """Generate YouTube metadata using LLM and log cost."""
     from src.services.metadata import generate_youtube_metadata
 
     model = await _get_model(session, job.provider)
@@ -144,11 +165,7 @@ async def _generate_metadata(job: Job, session: AsyncSession, srt_content: str, 
     job.youtube_title = result.get("title", "")
     job.youtube_description = result.get("description", "")
     tags = result.get("tags", [])
-    import json
     job.youtube_tags = json.dumps(tags, ensure_ascii=False)
-
-    # Log metadata generation cost
-    from src.services.cost import estimate_llm_cost
 
     provider_name = "openai" if job.provider == "whisper" else "gemini"
     cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
