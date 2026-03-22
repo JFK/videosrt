@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-Web application that generates SRT subtitle files from MP4 videos using AI transcription, with YouTube metadata auto-generation.
+Web application that generates SRT subtitle files from video/audio files using AI transcription, with LLM post-processing, YouTube metadata/quiz generation.
+
+**Supported formats**: MP4, MP3, WAV, MOV, AVI, MKV, M4A, FLAC, OGG, WebM
 
 ## Tech Stack
 

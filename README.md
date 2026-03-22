@@ -1,17 +1,19 @@
 # VideoSRT
 
-Generate SRT subtitle files from MP4 videos using AI transcription.
+Generate SRT subtitle files from video/audio using AI transcription.
 
-MP4動画からAI文字起こしでSRT字幕ファイルを生成するWebアプリケーション。
+動画・音声ファイルからAI文字起こしでSRT字幕ファイルを生成するWebアプリケーション。
 
 ## Features
 
 - **AI Transcription**: High-accuracy speech recognition via OpenAI Whisper API / Google Gemini API
+- **Multi-format Support**: MP4, MP3, WAV, MOV, AVI, MKV, M4A, FLAC, OGG, WebM
 - **SRT Generation**: Auto-generate timestamped SRT subtitle files
+- **LLM Post-processing**: Fix proper nouns, punctuation, fillers with glossary support
 - **YouTube Metadata**: Auto-generate title, description (with chapter index), and tags
-
+- **YouTube Quiz**: Auto-generate quiz questions from video content
 - **Cost Dashboard**: Track API costs by provider, month, and operation
-- **Web UI Settings**: Manage API keys and LLM models from the browser
+- **Web UI Settings**: Manage API keys, LLM models, and glossary from the browser
 
 ## Quick Start
 
