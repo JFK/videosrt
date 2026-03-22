@@ -21,6 +21,16 @@ async def history_page(request: Request, session: AsyncSession = Depends(get_ses
     return templates.TemplateResponse("history.html", {"request": request, "active_page": "history", "jobs": jobs})
 
 
+@router.get("/meta/{job_id}")
+async def meta_editor_page(job_id: str, request: Request, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(Job).where(Job.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse("/history")
+    return templates.TemplateResponse("meta_editor.html", {"request": request, "active_page": "history", "job": job})
+
+
 @router.get("/costs")
 async def costs_page(request: Request):
     return templates.TemplateResponse("costs.html", {"request": request, "active_page": "costs"})

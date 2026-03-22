@@ -194,19 +194,53 @@ async def download_srt(job_id: str, session: AsyncSession = Depends(get_session)
 @router.post("/{job_id}/generate-meta")
 async def generate_meta(
     job_id: str,
+    request: Request,
     background_tasks: BackgroundTasks = BackgroundTasks(),
     session: AsyncSession = Depends(get_session),
 ):
-    """Generate YouTube metadata for a completed job."""
+    """Generate YouTube metadata with optional custom prompt."""
     job = await _get_job_or_404(session, job_id)
     if not job.srt_path:
         raise HTTPException(status_code=400, detail="No SRT file available")
 
-    background_tasks.add_task(_generate_meta_job, job_id)
+    custom_prompt = None
+    try:
+        body = await request.json()
+        custom_prompt = body.get("custom_prompt")
+    except Exception:
+        pass
+
+    background_tasks.add_task(_generate_meta_job, job_id, custom_prompt)
     return {"status": "generating_metadata"}
 
 
-async def _generate_meta_job(job_id: str) -> None:
+@router.post("/{job_id}/optimize-prompt")
+async def optimize_prompt(
+    job_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
+    """Use LLM to optimize the metadata generation prompt."""
+    from src.services.metadata import optimize_meta_prompt
+    from src.services.transcribe import _get_api_key, _get_model
+
+    job = await _get_job_or_404(session, job_id)
+    body = await request.json()
+    context = body.get("context", {})
+    current_prompt = body.get("current_prompt", "")
+
+    api_key = await _get_api_key(session, job.provider)
+    model = await _get_model(session, job.provider)
+
+    optimized = await optimize_meta_prompt(
+        current_prompt, context, api_key,
+        "openai" if job.provider == "whisper" else "gemini",
+        model,
+    )
+    return {"optimized_prompt": optimized}
+
+
+async def _generate_meta_job(job_id: str, custom_prompt: str | None = None) -> None:
     """Background task: generate YouTube metadata from existing SRT."""
     from src.services.transcribe import _get_api_key, _run_metadata_generation
 
@@ -222,7 +256,7 @@ async def _generate_meta_job(job_id: str) -> None:
 
             srt_content = Path(job.srt_path).read_text(encoding="utf-8")
             api_key = await _get_api_key(session, job.provider)
-            await _run_metadata_generation(job, session, srt_content, api_key)
+            await _run_metadata_generation(job, session, srt_content, api_key, custom_prompt)
 
             job.status = "completed"
             await session.commit()

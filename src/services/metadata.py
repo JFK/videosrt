@@ -52,17 +52,79 @@ async def generate_youtube_metadata(
     api_key: str,
     provider: str,
     model: str,
+    custom_prompt: str | None = None,
 ) -> tuple[dict, int, int]:
     """Generate YouTube metadata from SRT content.
 
     Returns (metadata_dict, input_tokens, output_tokens).
     """
-    prompt = METADATA_USER_PROMPT.format(srt_content=srt_content)
+    if custom_prompt:
+        prompt = custom_prompt + f"\n\n---\n\nTranscription:\n{srt_content}"
+    else:
+        prompt = METADATA_USER_PROMPT.format(srt_content=srt_content)
 
-    if provider == "whisper":
+    if provider == "whisper" or provider == "openai":
         return await _generate_openai(prompt, api_key, model)
     else:
         return await _generate_gemini(prompt, api_key, model)
+
+
+OPTIMIZE_PROMPT = """You are a YouTube SEO expert. Improve the following metadata generation prompt based on the channel context provided.
+
+Make the prompt more specific and effective for generating:
+- Click-worthy titles (with SEO keywords)
+- Engaging descriptions (with chapter index format)
+- Relevant tags
+
+Channel context:
+- Channel: {channel_name}
+- Genre: {genre}
+- Speakers: {speakers}
+- Target audience: {audience}
+- Notes: {notes}
+
+Current prompt:
+{current_prompt}
+
+Return ONLY the improved prompt text. Do not include any explanation or markdown."""
+
+
+async def optimize_meta_prompt(
+    current_prompt: str,
+    context: dict,
+    api_key: str,
+    provider: str,
+    model: str,
+) -> str:
+    """Use LLM to optimize the metadata generation prompt."""
+    prompt = OPTIMIZE_PROMPT.format(
+        channel_name=context.get("channelName", ""),
+        genre=context.get("genre", ""),
+        speakers=context.get("speakers", ""),
+        audience=context.get("audience", ""),
+        notes=context.get("notes", ""),
+        current_prompt=current_prompt,
+    )
+
+    if provider == "openai":
+        import openai
+        client = openai.AsyncOpenAI(api_key=api_key)
+        response = await client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+        )
+        return response.choices[0].message.content or current_prompt
+    else:
+        import asyncio
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model=model,
+            contents=prompt,
+        )
+        return response.text.strip() or current_prompt
 
 
 async def _generate_openai(prompt: str, api_key: str, model: str) -> tuple[dict, int, int]:

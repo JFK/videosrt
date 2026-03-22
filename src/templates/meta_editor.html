@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}Generate YouTube Metadata - VideoSRT{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto" x-data="metaEditor()">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">YouTube Metadata</h1>
+    <p class="text-sm text-gray-500 mb-6">{{ job.filename }} ({{ "%.1f"|format(job.audio_duration) }}s)</p>
+
+    <!-- Step 1: Context Input -->
+    <div x-show="step === 'edit'" class="space-y-4">
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Channel & Video Info</h2>
+            <p class="text-sm text-gray-500 mb-4">Provide context to generate better metadata. All fields are optional.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Channel Name</label>
+                    <input type="text" x-model="context.channelName"
+                           class="w-full rounded-md border-gray-300 text-sm p-2 border"
+                           placeholder="e.g., Tech Reviews JP">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Genre / Category</label>
+                    <input type="text" x-model="context.genre"
+                           class="w-full rounded-md border-gray-300 text-sm p-2 border"
+                           placeholder="e.g., Tech, Vlog, Education">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Speakers / Cast</label>
+                    <input type="text" x-model="context.speakers"
+                           class="w-full rounded-md border-gray-300 text-sm p-2 border"
+                           placeholder="e.g., John, Sarah">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
+                    <input type="text" x-model="context.audience"
+                           class="w-full rounded-md border-gray-300 text-sm p-2 border"
+                           placeholder="e.g., Beginners, Developers">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                <textarea x-model="context.notes" rows="2"
+                          class="w-full rounded-md border-gray-300 text-sm p-2 border"
+                          placeholder="Any specific instructions for metadata generation..."></textarea>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-medium text-gray-900">Prompt</h2>
+                <button @click="optimizePrompt()" :disabled="optimizing"
+                        class="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:bg-gray-400">
+                    <span x-show="!optimizing">Optimize with AI</span>
+                    <span x-show="optimizing">Optimizing...</span>
+                </button>
+            </div>
+            <textarea x-model="prompt" rows="12"
+                      class="w-full rounded-md border-gray-300 text-sm p-2 border font-mono"></textarea>
+            <div class="mt-2 flex justify-between items-center">
+                <button @click="resetPrompt()" class="text-sm text-gray-500 hover:text-gray-700">Reset to default</button>
+                <button @click="generateMetadata()" :disabled="generating"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400">
+                    <span x-show="!generating">Generate Metadata</span>
+                    <span x-show="generating">Generating...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Results -->
+    <div x-show="step === 'result'" class="space-y-4">
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-medium text-gray-900">Generated Metadata</h2>
+                <div class="space-x-2">
+                    <button @click="step = 'edit'"
+                            class="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700">
+                        Regenerate
+                    </button>
+                    <a href="/history"
+                       class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700">
+                        Back to History
+                    </a>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <div class="flex">
+                        <input type="text" x-model="result.title" readonly
+                               class="flex-1 rounded-l-md border-gray-300 text-sm p-2 border bg-gray-50">
+                        <button @click="copyText(result.title)"
+                                class="px-3 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md text-xs hover:bg-gray-200">Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea x-model="result.description" readonly rows="12"
+                              class="w-full rounded-md border-gray-300 text-sm p-2 border bg-gray-50"></textarea>
+                    <button @click="copyText(result.description)"
+                            class="mt-1 px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-xs hover:bg-gray-200">Copy Description</button>
+                </div>
+                <div x-show="result.tags && result.tags.length > 0">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                    <div class="flex flex-wrap gap-1 mb-2">
+                        <template x-for="tag in result.tags" :key="tag">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800" x-text="tag"></span>
+                        </template>
+                    </div>
+                    <button @click="copyText(result.tags.join(', '))"
+                            class="px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-xs hover:bg-gray-200">Copy Tags</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast" x-cloak
+         x-transition
+         class="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+        <p class="text-sm font-medium" x-text="toast"></p>
+    </div>
+</div>
+
+<script>
+function metaEditor() {
+    const defaultPrompt = `Generate YouTube metadata from the video transcription.
+
+## Output Format
+Return a JSON object:
+{
+  "title": "SEO-optimized title (max 60 chars)",
+  "description": "Video description",
+  "tags": ["tag1", "tag2", ...],
+  "chapters": [{"time": "00:00", "title": "Chapter title"}, ...]
+}
+
+## Description Structure
+1. First 3 lines: Video summary (shown in search results)
+2. Chapter index (MM:SS timestamps)
+3. Related keywords and hashtags
+
+## Chapter Rules
+- Set chapters at topic change points
+- First chapter must be 00:00
+- Each chapter title max 20 chars
+
+## Tags: 15-25 tags related to the video content`;
+
+    return {
+        jobId: '{{ job.id }}',
+        step: 'edit',
+        context: {
+            channelName: '',
+            genre: '',
+            speakers: '',
+            audience: '',
+            notes: '',
+        },
+        prompt: defaultPrompt,
+        defaultPrompt: defaultPrompt,
+        optimizing: false,
+        generating: false,
+        result: { title: '', description: '', tags: [] },
+        toast: '',
+
+        init() {
+            // Load saved context from settings
+            fetch('/api/settings/glossary').then(r => r.json()).then(d => {
+                // glossary is for transcription, but channel context is separate
+            });
+            fetch('/api/settings/general').then(r => r.json()).then(d => {
+                // Load saved meta prompt if exists
+            });
+            this.loadSavedContext();
+        },
+
+        async loadSavedContext() {
+            try {
+                const res = await fetch('/api/settings/meta-context');
+                const data = await res.json();
+                if (data.context) {
+                    this.context = { ...this.context, ...JSON.parse(data.context) };
+                }
+                if (data.prompt) {
+                    this.prompt = data.prompt;
+                }
+            } catch (e) { /* first time, no saved context */ }
+        },
+
+        async saveContext() {
+            await fetch('/api/settings/meta-context', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    context: JSON.stringify(this.context),
+                    prompt: this.prompt
+                })
+            });
+        },
+
+        resetPrompt() {
+            this.prompt = this.defaultPrompt;
+        },
+
+        async optimizePrompt() {
+            this.optimizing = true;
+            try {
+                await this.saveContext();
+                const res = await fetch(`/api/jobs/${this.jobId}/optimize-prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        context: this.context,
+                        current_prompt: this.prompt
+                    })
+                });
+                const data = await res.json();
+                if (data.optimized_prompt) {
+                    this.prompt = data.optimized_prompt;
+                    this.showToast('Prompt optimized');
+                }
+            } catch (e) {
+                alert('Optimization failed: ' + e.message);
+            } finally {
+                this.optimizing = false;
+            }
+        },
+
+        async generateMetadata() {
+            this.generating = true;
+            try {
+                await this.saveContext();
+                const res = await fetch(`/api/jobs/${this.jobId}/generate-meta`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ custom_prompt: this.prompt })
+                });
+                // Poll for result
+                const poll = setInterval(async () => {
+                    const r = await fetch(`/api/jobs/${this.jobId}`);
+                    const job = await r.json();
+                    if (job.youtube_title) {
+                        clearInterval(poll);
+                        this.result.title = job.youtube_title;
+                        this.result.description = job.youtube_description;
+                        try { this.result.tags = JSON.parse(job.youtube_tags || '[]'); } catch(e) { this.result.tags = []; }
+                        this.step = 'result';
+                        this.generating = false;
+                    } else if (job.status === 'failed') {
+                        clearInterval(poll);
+                        alert('Generation failed: ' + (job.error_message || 'Unknown error'));
+                        this.generating = false;
+                    }
+                }, 2000);
+            } catch (e) {
+                alert('Generation failed: ' + e.message);
+                this.generating = false;
+            }
+        },
+
+        copyText(text) {
+            navigator.clipboard.writeText(text);
+            this.showToast('Copied!');
+        },
+
+        showToast(msg) {
+            this.toast = msg;
+            setTimeout(() => this.toast = '', 2000);
+        }
+    };
+}
+</script>
+{% endblock %}

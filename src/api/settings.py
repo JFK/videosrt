@@ -169,6 +169,38 @@ async def set_glossary(body: GeneralSettingInput, session: AsyncSession = Depend
     return {"glossary": body.value}
 
 
+class MetaContextInput(BaseModel):
+    context: str = ""
+    prompt: str = ""
+
+
+@router.get("/meta-context")
+async def get_meta_context(session: AsyncSession = Depends(get_session)):
+    result_ctx = await session.execute(select(Setting).where(Setting.key == "meta_context"))
+    result_prompt = await session.execute(select(Setting).where(Setting.key == "meta_prompt"))
+    ctx = result_ctx.scalar_one_or_none()
+    prompt = result_prompt.scalar_one_or_none()
+    return {
+        "context": ctx.value if ctx else "",
+        "prompt": prompt.value if prompt else "",
+    }
+
+
+@router.put("/meta-context")
+async def set_meta_context(body: MetaContextInput, session: AsyncSession = Depends(get_session)):
+    for db_key, value in [("meta_context", body.context), ("meta_prompt", body.prompt)]:
+        result = await session.execute(select(Setting).where(Setting.key == db_key))
+        setting = result.scalar_one_or_none()
+        if setting:
+            setting.value = value
+            setting.updated_at = datetime.now(UTC)
+        else:
+            setting = Setting(key=db_key, value=value, encrypted=False)
+            session.add(setting)
+    await session.commit()
+    return {"saved": True}
+
+
 @router.get("/general")
 async def get_general_settings(session: AsyncSession = Depends(get_session)):
     result = {}

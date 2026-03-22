@@ -38,9 +38,9 @@
                        class="text-blue-600 hover:text-blue-800 font-medium">SRT</a>
                     {% endif %}
 
-                    {% if job.srt_path and job.status in ('completed', 'failed') and not job.youtube_title %}
-                    <button onclick="generateMeta('{{ job.id }}')"
-                            class="text-yellow-600 hover:text-yellow-800 font-medium">Gen Meta</button>
+                    {% if job.srt_path and job.status in ('completed', 'failed') %}
+                    <a href="/meta/{{ job.id }}"
+                       class="text-yellow-600 hover:text-yellow-800 font-medium">{% if job.youtube_title %}Edit Meta{% else %}Gen Meta{% endif %}</a>
                     {% endif %}
 
                     {% if job.youtube_title %}
@@ -104,27 +104,4 @@
     </table>
 </div>
 
-<script>
-async function generateMeta(jobId) {
-    const btn = event.target;
-    btn.textContent = 'Generating...';
-    btn.disabled = true;
-    try {
-        await fetch(`/api/jobs/${jobId}/generate-meta`, { method: 'POST' });
-        // Poll until done
-        const poll = setInterval(async () => {
-            const res = await fetch(`/api/jobs/${jobId}`);
-            const job = await res.json();
-            if (job.youtube_title || job.status === 'failed') {
-                clearInterval(poll);
-                location.reload();
-            }
-        }, 2000);
-    } catch (e) {
-        btn.textContent = 'Gen Meta';
-        btn.disabled = false;
-        alert('Failed: ' + e.message);
-    }
-}
-</script>
 {% endblock %}
