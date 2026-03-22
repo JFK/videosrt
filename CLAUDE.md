@@ -15,20 +15,42 @@ Web application that generates SRT subtitle files from MP4 videos using AI trans
 - **Font**: Noto Sans CJK JP (free, installed via apt-get in Docker)
 - **Deployment**: Docker (single container)
 
-## Development Setup
+## Setup Instructions
 
+When asked to set up this project, follow these steps:
+
+### Prerequisites
+- Python 3.11+
+- ffmpeg (`apt-get install ffmpeg` or `brew install ffmpeg`)
+- For subtitle embedding: Noto Sans CJK JP font (`apt-get install fonts-noto-cjk`)
+
+### Steps
+
+1. **Install dependencies**
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+2. **Generate encryption key and create .env**
+   ```bash
+   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   ```
+   Create `.env` file with:
+   ```
+   ENCRYPTION_KEY=<generated key>
+   ```
+
+3. **Start the dev server**
+   ```bash
+   uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+4. **Open http://localhost:8000** and configure API keys in Settings page
+
+### Docker (alternative)
 ```bash
-# Install dependencies
-pip install -e ".[dev]"
-
-# Generate encryption key
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-# Set ENCRYPTION_KEY=<generated key> in .env
-
-# Run dev server
-uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
-
-# Docker
+cp .env.example .env
+# Edit .env and set ENCRYPTION_KEY
 docker compose up --build
 ```
 

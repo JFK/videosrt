@@ -13,16 +13,16 @@ def test_whisper_cost_ten_minutes():
 
 def test_gemini_cost():
     # 60 seconds = 1920 input tokens
-    cost = estimate_gemini_cost(60.0, output_tokens=500, model="gemini-2.5-flash")
+    cost = estimate_gemini_cost(60.0, output_tokens=500, model="gemini-3.1-flash-lite")
     assert cost > 0
-    assert cost < 0.01  # Should be very cheap
+    assert cost < 0.01
 
 
 def test_llm_cost_openai():
-    cost = estimate_llm_cost(1000, 500, "gpt-4.1", "openai")
+    cost = estimate_llm_cost(1000, 500, "gpt-5.4", "openai")
     assert cost > 0
 
 
 def test_llm_cost_gemini():
-    cost = estimate_llm_cost(1000, 500, "gemini-2.5-flash", "gemini")
+    cost = estimate_llm_cost(1000, 500, "gemini-3.1-flash-lite", "gemini")
     assert cost > 0

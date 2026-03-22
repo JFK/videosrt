@@ -146,11 +146,11 @@ async def get_job(job_id: str, session: AsyncSession = Depends(get_session)):
 
 
 @router.get("/{job_id}/status")
-async def get_job_status(job_id: str, request: Request | None = None, session: AsyncSession = Depends(get_session)):
+async def get_job_status(job_id: str, request: Request, session: AsyncSession = Depends(get_session)):
     """HTMX partial for polling job status."""
     job = await _get_job_or_404(session, job_id)
 
-    if request and request.headers.get("HX-Request"):
+    if request.headers.get("HX-Request"):
         return templates.TemplateResponse("partials/job_status.html", {"request": request, "job": job})
 
     return {"status": job.status, "error_message": job.error_message}

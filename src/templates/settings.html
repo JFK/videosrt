@@ -44,7 +44,28 @@
     <!-- Model Selection -->
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-lg font-medium text-gray-900 mb-4">LLM Models</h2>
-        <p class="text-sm text-gray-500 mb-4">Models used for YouTube metadata generation.</p>
+        <p class="text-sm text-gray-500 mb-4">Models used for YouTube metadata generation. Choose a preset or set custom models.</p>
+
+        <!-- Presets -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Presets</label>
+            <div class="flex space-x-2">
+                <button @click="applyPreset('quality')"
+                        class="px-4 py-2 bg-purple-100 text-purple-700 border border-purple-300 rounded-md text-sm hover:bg-purple-200 font-medium">
+                    Quality
+                </button>
+                <button @click="applyPreset('balanced')"
+                        class="px-4 py-2 bg-blue-100 text-blue-700 border border-blue-300 rounded-md text-sm hover:bg-blue-200 font-medium">
+                    Balanced
+                </button>
+                <button @click="applyPreset('budget')"
+                        class="px-4 py-2 bg-green-100 text-green-700 border border-green-300 rounded-md text-sm hover:bg-green-200 font-medium">
+                    Budget
+                </button>
+            </div>
+            <p class="mt-2 text-xs text-gray-500" x-text="presetDescription"></p>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">OpenAI Model</label>
@@ -93,7 +114,25 @@ function settingsPage() {
             { id: 'openai', label: 'OpenAI', configured: false, masked: '', newKey: '', showKey: false, testResult: null, testError: '' },
             { id: 'google', label: 'Google (Gemini)', configured: false, masked: '', newKey: '', showKey: false, testResult: null, testError: '' },
         ],
-        models: { openai: 'gpt-4.1', gemini: 'gemini-2.5-flash' },
+        models: { openai: 'gpt-5.4', gemini: 'gemini-3.1-flash-lite' },
+        presetDescription: '',
+        presets: {
+            quality: {
+                openai: 'gpt-5.4',
+                gemini: 'gemini-3.1-pro',
+                desc: 'Quality: gpt-5.4 + gemini-3.1-pro — Best accuracy, highest cost'
+            },
+            balanced: {
+                openai: 'gpt-5.4-mini',
+                gemini: 'gemini-3.1-flash-lite',
+                desc: 'Balanced: gpt-5.4-mini + gemini-3.1-flash-lite — Good quality, reasonable cost'
+            },
+            budget: {
+                openai: 'gpt-5.4-nano',
+                gemini: 'gemini-3.1-flash-lite',
+                desc: 'Budget: gpt-5.4-nano + gemini-3.1-flash-lite — Lowest cost'
+            }
+        },
         statusMsg: '',
         logoMsg: '',
 
@@ -140,6 +179,16 @@ function settingsPage() {
             p.configured = false;
             p.masked = '';
             this.showStatus('API key deleted');
+        },
+
+        async applyPreset(name) {
+            const preset = this.presets[name];
+            this.models.openai = preset.openai;
+            this.models.gemini = preset.gemini;
+            this.presetDescription = preset.desc;
+            await this.saveModel('openai', preset.openai);
+            await this.saveModel('gemini', preset.gemini);
+            this.showStatus(`Preset "${name}" applied`);
         },
 
         async saveModel(provider, model) {

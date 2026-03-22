@@ -15,34 +15,39 @@ MP4動画からAI文字起こしでSRT字幕ファイルを生成するWebアプ
 
 ## Quick Start
 
-### Docker (Recommended)
+### With Claude Code (Recommended)
 
 ```bash
-# 1. Generate encryption key
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-
-# 2. Create .env file
-cp .env.example .env
-# Set ENCRYPTION_KEY with the generated key
-
-# 3. Start
-docker compose up --build
-
-# 4. Open http://localhost:8000
-# 5. Configure API keys in Settings
-# 6. Upload an MP4 and generate subtitles
+git clone https://github.com/JFK/videosrt.git
+cd videosrt
+claude
+# Then tell Claude: "Set up this project"
 ```
 
-### Local Development
+Claude Code will read `CLAUDE.md` and handle the full setup automatically.
+
+### Manual Setup
 
 ```bash
-# Prerequisites: Python 3.11+, ffmpeg installed
+# Prerequisites: Python 3.11+, ffmpeg
 
 pip install -e ".[dev]"
 
-# Set up .env (see above)
+# Generate encryption key and create .env
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+cp .env.example .env
+# Set ENCRYPTION_KEY in .env
 
 uvicorn src.main:app --reload --port 8000
+# Open http://localhost:8000 → Settings → Configure API keys
+```
+
+### Docker
+
+```bash
+cp .env.example .env
+# Set ENCRYPTION_KEY in .env
+docker compose up --build
 ```
 
 ## Usage
@@ -68,7 +73,7 @@ Click the "Embed" button on the History page to burn subtitles and/or a logo int
 |---|---|---|
 | Accuracy | High (dedicated ASR model) | High (multimodal LLM) |
 | Timestamps | Precise (ASR-based) | Approximate (LLM-estimated) |
-| Cost | $0.006/min | ~$0.002/min (2.5 Flash) |
+| Cost | $0.006/min | ~$0.0005/min (3.1 Flash Lite) |
 | File Limit | 25MB (auto-chunking) | 9.5 hours |
 
 ## License

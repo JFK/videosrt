@@ -70,9 +70,7 @@
     <!-- Status -->
     <div x-show="jobId" class="mt-6 bg-white shadow rounded-lg p-6">
         <h2 class="text-lg font-medium text-gray-900 mb-2">Processing</h2>
-        <div hx-get="" :hx-get="'/api/jobs/' + jobId + '/status'"
-             hx-trigger="every 2s" hx-swap="innerHTML"
-             id="job-status">
+        <div id="job-status">
             <div class="flex items-center space-x-2">
                 <div class="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
                 <span class="text-sm text-gray-600">Starting...</span>
@@ -126,10 +124,15 @@ function uploadForm() {
                 });
                 const data = await res.json();
                 this.jobId = data.id;
-                // Trigger HTMX polling
+                // Set up HTMX polling now that we have a job ID
                 this.$nextTick(() => {
                     const el = document.getElementById('job-status');
-                    if (el) htmx.process(el);
+                    if (el) {
+                        el.setAttribute('hx-get', '/api/jobs/' + data.id + '/status');
+                        el.setAttribute('hx-trigger', 'every 2s');
+                        el.setAttribute('hx-swap', 'innerHTML');
+                        htmx.process(el);
+                    }
                 });
             } catch (e) {
                 alert('Upload failed: ' + e.message);

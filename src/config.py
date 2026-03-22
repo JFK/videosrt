@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     encryption_key: str = ""
 
     # Default LLM models
-    default_openai_model: str = "gpt-4.1"
-    default_gemini_model: str = "gemini-2.5-flash"
+    default_openai_model: str = "gpt-5.4"
+    default_gemini_model: str = "gemini-3.1-flash-lite"
 
     # Whisper settings
     whisper_chunk_duration_sec: int = 600  # 10 minutes
