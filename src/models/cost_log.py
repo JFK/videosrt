@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,4 +18,4 @@ class CostLog(Base):
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     estimated_cost: Mapped[float] = mapped_column(Float, nullable=False)
-    created_at: Mapped[str] = mapped_column(default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)

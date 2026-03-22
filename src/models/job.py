@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy import Boolean, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -24,5 +25,5 @@ class Job(Base):
     youtube_tags: Mapped[str | None] = mapped_column(Text, nullable=True)
     enable_metadata: Mapped[bool] = mapped_column(Boolean, default=False)
     enable_refine: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[str] = mapped_column(default=utcnow)
-    completed_at: Mapped[str | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
