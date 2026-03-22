@@ -66,12 +66,10 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Description</label>
-                                    <div class="mt-1">
-                                        <textarea readonly rows="10"
-                                                  class="w-full rounded-md border-gray-300 text-sm p-2 border bg-gray-50">{{ job.youtube_description }}</textarea>
-                                        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value)"
-                                                class="mt-1 px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-xs hover:bg-gray-200">Copy Description</button>
-                                    </div>
+                                    <textarea id="desc-{{ job.id }}" readonly rows="10"
+                                              class="mt-1 w-full rounded-md border-gray-300 text-sm p-2 border bg-gray-50">{{ job.youtube_description }}</textarea>
+                                    <button onclick="navigator.clipboard.writeText(document.getElementById('desc-{{ job.id }}').value)"
+                                            class="mt-1 px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-xs hover:bg-gray-200">Copy</button>
                                 </div>
                                 {% if job.youtube_tags %}
                                 <div>
