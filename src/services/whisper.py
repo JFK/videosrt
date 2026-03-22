@@ -33,22 +33,20 @@ async def transcribe_with_whisper(
 
     segments = []
     raw_segments = getattr(response, "segments", None)
-    logger.info("Whisper response type: %s, segments type: %s", type(response).__name__, type(raw_segments).__name__ if raw_segments else "None")
-    if raw_segments:
-        if len(raw_segments) > 0:
-            logger.info("First segment type: %s, value: %s", type(raw_segments[0]).__name__, repr(raw_segments[0])[:200])
-        for seg in raw_segments:
-            if isinstance(seg, dict):
-                segments.append({
-                    "start": seg["start"],
-                    "end": seg["end"],
-                    "text": seg["text"].strip(),
-                })
-            else:
-                segments.append({
-                    "start": seg.start,
-                    "end": seg.end,
-                    "text": seg.text.strip(),
-                })
+    logger.debug("Whisper response type: %s, segments type: %s", type(response).__name__, type(raw_segments).__name__ if raw_segments else "None")
+    for seg in (raw_segments or []):
+        logger.debug("Segment type: %s, value: %s", type(seg).__name__, repr(seg)[:200])
+        if isinstance(seg, dict):
+            segments.append({
+                "start": seg["start"],
+                "end": seg["end"],
+                "text": seg["text"].strip(),
+            })
+        else:
+            segments.append({
+                "start": seg.start,
+                "end": seg.end,
+                "text": seg.text.strip(),
+            })
 
     return segments

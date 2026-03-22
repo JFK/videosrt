@@ -1,10 +1,9 @@
-import json
 import logging
 from pathlib import Path
 
 from google import genai
 
-from src.services.utils import strip_markdown_fence
+from src.services.utils import extract_gemini_tokens, parse_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -39,17 +38,8 @@ Example: [{{"start": 0.0, "end": 2.5, "text": "Hello, welcome."}}]"""
         contents=[uploaded, prompt],
     )
 
-    text = strip_markdown_fence(response.text)
-    try:
-        segments = json.loads(text)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Gemini returned invalid JSON: {e}. Response: {text[:200]}")
-
-    input_tokens = 0
-    output_tokens = 0
-    if hasattr(response, "usage_metadata") and response.usage_metadata:
-        input_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-        output_tokens = getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+    segments = parse_json_response(response.text, context="Gemini transcription")
+    input_tokens, output_tokens = extract_gemini_tokens(response)
 
     # Clean up uploaded file
     try:

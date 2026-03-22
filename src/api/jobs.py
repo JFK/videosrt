@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
+from src.constants import STATUS_COMPLETED, STATUS_FAILED, get_provider_name
 from src.database import async_session, get_session
 from src.models import Job
 from src.templating import templates
@@ -64,7 +65,7 @@ async def _process_job(job_id: str) -> None:
             await process_transcription(job, session)
         except Exception as e:
             logger.exception("Job %s failed", job_id)
-            job.status = "failed"
+            job.status = STATUS_FAILED
             job.error_message = str(e)[:500]
             await session.commit()
 
@@ -236,7 +237,7 @@ async def optimize_prompt(
 
     optimized = await optimize_meta_prompt(
         current_prompt, context, api_key,
-        "openai" if job.provider == "whisper" else "gemini",
+        get_provider_name(job.provider),
         model,
     )
     return {"optimized_prompt": optimized}
@@ -265,12 +266,12 @@ async def _generate_meta_job(job_id: str, custom_prompt: str | None = None, fixe
                 job.youtube_description = job.youtube_description.rstrip() + "\n\n" + fixed_footer.strip()
                 await session.commit()
 
-            job.status = "completed"
+            job.status = STATUS_COMPLETED
             await session.commit()
             logger.info("Metadata generated for job %s", job_id)
         except Exception as e:
             logger.exception("Metadata generation failed for job %s", job_id)
-            job.status = "failed"
+            job.status = STATUS_FAILED
             job.error_message = f"Metadata generation failed: {str(e)[:400]}"
             await session.commit()
 
@@ -293,7 +294,7 @@ async def generate_quiz_endpoint(
         srt_content = Path(job.srt_path).read_text(encoding="utf-8")
         api_key = await _get_api_key(session, job.provider)
         model = await _get_model(session, job.provider)
-        provider_name = "openai" if job.provider == "whisper" else "gemini"
+        provider_name = get_provider_name(job.provider)
 
         quiz, input_tokens, output_tokens = await generate_quiz(
             srt_content, api_key, provider_name, model

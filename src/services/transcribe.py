@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
+from src.constants import KEY_API_GOOGLE, KEY_API_OPENAI, KEY_MODEL_GEMINI, KEY_MODEL_OPENAI, get_provider_name
 from src.models import Job, Setting
 from src.services.audio import extract_audio, extract_audio_mp3, get_audio_duration, split_audio
 from src.services.cost import estimate_gemini_cost, estimate_llm_cost, estimate_whisper_cost, log_cost
@@ -18,19 +19,17 @@ logger = logging.getLogger(__name__)
 
 async def _get_api_key(session: AsyncSession, provider: str) -> str:
     """Get decrypted API key for the given transcription provider."""
-    key_name = "openai" if provider == "whisper" else "google"
-    db_key = f"api_key.{key_name}"
+    db_key = KEY_API_OPENAI if provider == "whisper" else KEY_API_GOOGLE
     result = await session.execute(select(Setting).where(Setting.key == db_key))
     setting = result.scalar_one_or_none()
     if not setting:
-        raise RuntimeError(f"API key for {key_name} is not configured. Set it in Settings.")
+        raise RuntimeError(f"API key ({db_key}) is not configured. Set it in Settings.")
     return decrypt(setting.value)
 
 
 async def _get_model(session: AsyncSession, provider: str) -> str:
     """Get configured LLM model for the given provider."""
-    model_key = "openai" if provider == "whisper" else "gemini"
-    db_key = f"model.{model_key}"
+    db_key = KEY_MODEL_OPENAI if provider == "whisper" else KEY_MODEL_GEMINI
     result = await session.execute(select(Setting).where(Setting.key == db_key))
     setting = result.scalar_one_or_none()
     if setting:
@@ -179,7 +178,7 @@ async def _run_metadata_generation(
     tags = result.get("tags", [])
     job.youtube_tags = json.dumps(tags, ensure_ascii=False)
 
-    provider_name = "openai" if job.provider == "whisper" else "gemini"
+    provider_name = get_provider_name(job.provider)
     cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
     await log_cost(
         session, job.id, provider_name, model, "metadata_generation", cost,
@@ -193,7 +192,7 @@ async def _run_refinement(
     """Refine segments using LLM post-processing and log cost."""
     from src.services.refine import refine_with_llm
 
-    provider_name = "openai" if job.provider == "whisper" else "gemini"
+    provider_name = get_provider_name(job.provider)
 
     # Get refine model from settings
     refine_key = f"general.refine_model_{provider_name}"

@@ -1,6 +1,5 @@
-import json
-
-from src.services.utils import strip_markdown_fence
+from src.constants import get_provider_name
+from src.services.utils import extract_gemini_tokens, parse_json_response
 
 METADATA_SYSTEM_PROMPT = (
     "You are an expert at generating YouTube video metadata. "
@@ -63,7 +62,7 @@ async def generate_youtube_metadata(
     else:
         prompt = METADATA_USER_PROMPT.format(srt_content=srt_content)
 
-    if provider == "whisper" or provider == "openai":
+    if get_provider_name(provider) == "openai":
         return await _generate_openai(prompt, api_key, model)
     else:
         return await _generate_gemini(prompt, api_key, model)
@@ -142,10 +141,7 @@ async def _generate_openai(prompt: str, api_key: str, model: str) -> tuple[dict,
     )
 
     text = response.choices[0].message.content or "{}"
-    try:
-        metadata = json.loads(text)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"OpenAI returned invalid JSON: {e}. Response: {text[:200]}")
+    metadata = parse_json_response(text, context="OpenAI metadata")
 
     input_tokens = response.usage.prompt_tokens if response.usage else 0
     output_tokens = response.usage.completion_tokens if response.usage else 0
@@ -166,17 +162,8 @@ async def _generate_gemini(prompt: str, api_key: str, model: str) -> tuple[dict,
         contents=f"{METADATA_SYSTEM_PROMPT}\n\n{prompt}",
     )
 
-    text = strip_markdown_fence(response.text)
-    try:
-        metadata = json.loads(text)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Gemini returned invalid JSON: {e}. Response: {text[:200]}")
-
-    input_tokens = 0
-    output_tokens = 0
-    if hasattr(response, "usage_metadata") and response.usage_metadata:
-        input_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-        output_tokens = getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+    metadata = parse_json_response(response.text, context="Gemini metadata")
+    input_tokens, output_tokens = extract_gemini_tokens(response)
 
     return _build_description(metadata), input_tokens, output_tokens
 

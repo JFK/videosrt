@@ -1,9 +1,8 @@
 """Generate YouTube quiz questions from SRT content."""
 
-import json
 import logging
 
-from src.services.utils import strip_markdown_fence
+from src.services.utils import extract_gemini_tokens, parse_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +53,7 @@ async def _generate_openai(prompt: str, api_key: str, model: str) -> tuple[list[
     )
 
     text = response.choices[0].message.content or "{}"
-    try:
-        result = json.loads(text)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Invalid JSON: {e}. Response: {text[:200]}")
+    result = parse_json_response(text, context="OpenAI quiz")
 
     quiz = result.get("quiz", [])
     input_tokens = response.usage.prompt_tokens if response.usage else 0
@@ -77,16 +73,7 @@ async def _generate_gemini(prompt: str, api_key: str, model: str) -> tuple[list[
         contents=prompt,
     )
 
-    text = strip_markdown_fence(response.text)
-    try:
-        result = json.loads(text)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Invalid JSON: {e}. Response: {text[:200]}")
-
+    result = parse_json_response(response.text, context="Gemini quiz")
     quiz = result.get("quiz", [])
-    input_tokens = 0
-    output_tokens = 0
-    if hasattr(response, "usage_metadata") and response.usage_metadata:
-        input_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-        output_tokens = getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+    input_tokens, output_tokens = extract_gemini_tokens(response)
     return quiz, input_tokens, output_tokens

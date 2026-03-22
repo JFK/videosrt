@@ -13,6 +13,18 @@ from src.services.crypto import decrypt, encrypt
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
+async def _upsert_setting(session: AsyncSession, key: str, value: str, encrypted: bool = False):
+    """Check if setting exists, update or create it."""
+    result = await session.execute(select(Setting).where(Setting.key == key))
+    setting = result.scalar_one_or_none()
+    if setting:
+        setting.value = value
+        setting.updated_at = datetime.now(UTC)
+    else:
+        setting = Setting(key=key, value=value, encrypted=encrypted)
+        session.add(setting)
+
+
 class KeyInput(BaseModel):
     key: str
 
@@ -46,18 +58,8 @@ async def save_key(provider: str, body: KeyInput, session: AsyncSession = Depend
         raise HTTPException(status_code=400, detail="Provider must be 'openai' or 'google'")
 
     db_key = f"api_key.{provider}"
-    result = await session.execute(select(Setting).where(Setting.key == db_key))
-    setting = result.scalar_one_or_none()
-
     encrypted_value = encrypt(body.key)
-
-    if setting:
-        setting.value = encrypted_value
-        setting.updated_at = datetime.now(UTC)
-    else:
-        setting = Setting(key=db_key, value=encrypted_value, encrypted=True)
-        session.add(setting)
-
+    await _upsert_setting(session, db_key, encrypted_value, encrypted=True)
     await session.commit()
     return {"provider": provider, "configured": True}
 
@@ -123,16 +125,7 @@ async def set_model(provider: str, body: ModelInput, session: AsyncSession = Dep
         raise HTTPException(status_code=400, detail="Provider must be 'openai' or 'gemini'")
 
     db_key = f"model.{provider}"
-    result = await session.execute(select(Setting).where(Setting.key == db_key))
-    setting = result.scalar_one_or_none()
-
-    if setting:
-        setting.value = body.model
-        setting.updated_at = datetime.now(UTC)
-    else:
-        setting = Setting(key=db_key, value=body.model, encrypted=False)
-        session.add(setting)
-
+    await _upsert_setting(session, db_key, body.model)
     await session.commit()
     return {"provider": provider, "model": body.model}
 
@@ -154,17 +147,7 @@ async def get_glossary(session: AsyncSession = Depends(get_session)):
 
 @router.put("/glossary")
 async def set_glossary(body: GeneralSettingInput, session: AsyncSession = Depends(get_session)):
-    db_key = "glossary"
-    result = await session.execute(select(Setting).where(Setting.key == db_key))
-    setting = result.scalar_one_or_none()
-
-    if setting:
-        setting.value = body.value
-        setting.updated_at = datetime.now(UTC)
-    else:
-        setting = Setting(key=db_key, value=body.value, encrypted=False)
-        session.add(setting)
-
+    await _upsert_setting(session, "glossary", body.value)
     await session.commit()
     return {"glossary": body.value}
 
@@ -189,14 +172,7 @@ async def get_meta_context(session: AsyncSession = Depends(get_session)):
 @router.put("/meta-context")
 async def set_meta_context(body: MetaContextInput, session: AsyncSession = Depends(get_session)):
     for db_key, value in [("meta_context", body.context), ("meta_prompt", body.prompt)]:
-        result = await session.execute(select(Setting).where(Setting.key == db_key))
-        setting = result.scalar_one_or_none()
-        if setting:
-            setting.value = value
-            setting.updated_at = datetime.now(UTC)
-        else:
-            setting = Setting(key=db_key, value=value, encrypted=False)
-            session.add(setting)
+        await _upsert_setting(session, db_key, value)
     await session.commit()
     return {"saved": True}
 
@@ -221,16 +197,7 @@ async def set_general_setting(key: str, body: GeneralSettingInput, session: Asyn
         raise HTTPException(status_code=400, detail=f"Unknown setting: {key}")
 
     db_key = f"general.{key}"
-    result = await session.execute(select(Setting).where(Setting.key == db_key))
-    setting = result.scalar_one_or_none()
-
-    if setting:
-        setting.value = body.value
-        setting.updated_at = datetime.now(UTC)
-    else:
-        setting = Setting(key=db_key, value=body.value, encrypted=False)
-        session.add(setting)
-
+    await _upsert_setting(session, db_key, body.value)
     await session.commit()
     return {"key": key, "value": body.value}
 

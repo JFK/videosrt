@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Generate YouTube Metadata - VideoSRT{% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto" x-data="metaEditor()">
+<div class="max-w-3xl mx-auto" x-data="metaEditor()" x-init="loadSavedContext()">
     <h1 class="text-2xl font-bold text-gray-900 mb-2">YouTube Metadata</h1>
     <p class="text-sm text-gray-500 mb-6">{{ job.filename }} ({{ "%.1f"|format(job.audio_duration) }}s)</p>
 
@@ -186,10 +186,6 @@ Return a JSON object:
         generating: false,
         result: { title: '', description: '', tags: [] },
         toast: '',
-
-        init() {
-            this.loadSavedContext();
-        },
 
         async loadSavedContext() {
             try {

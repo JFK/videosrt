@@ -1,13 +1,7 @@
-from datetime import UTC, datetime
-
 from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.database import Base
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
+from src.database import Base, utcnow
 
 
 class CostLog(Base):
@@ -22,4 +16,4 @@ class CostLog(Base):
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     estimated_cost: Mapped[float] = mapped_column(Float, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    created_at: Mapped[str] = mapped_column(default=utcnow)

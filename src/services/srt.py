@@ -1,3 +1,4 @@
+import textwrap
 from pathlib import Path
 
 
@@ -17,29 +18,7 @@ def _wrap_text(text: str, max_chars: int = MAX_LINE_CHARS) -> str:
     """Wrap text into lines of max_chars for subtitle display."""
     if len(text) <= max_chars:
         return text
-
-    lines = []
-    current = ""
-    for char in text:
-        current += char
-        if len(current) >= max_chars:
-            # Try to break at punctuation or space
-            break_pos = -1
-            for i in range(len(current) - 1, max(len(current) - 6, -1), -1):
-                if current[i] in "、。，．！？ ,. ":
-                    break_pos = i + 1
-                    break
-            if break_pos > 0:
-                lines.append(current[:break_pos].rstrip())
-                current = current[break_pos:].lstrip()
-            else:
-                lines.append(current)
-                current = ""
-
-    if current.strip():
-        lines.append(current.strip())
-
-    return "\n".join(lines)
+    return "\n".join(textwrap.wrap(text, width=max_chars))
 
 
 def generate_srt(segments: list[dict]) -> str:

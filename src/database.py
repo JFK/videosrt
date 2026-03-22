@@ -1,7 +1,14 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from src.config import settings
+
+
+def utcnow() -> datetime:
+    """UTC timestamp for model defaults."""
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):

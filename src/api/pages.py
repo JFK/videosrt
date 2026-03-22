@@ -16,7 +16,7 @@ async def upload_page(request: Request):
 
 @router.get("/history")
 async def history_page(request: Request, session: AsyncSession = Depends(get_session)):
-    result = await session.execute(select(Job).order_by(Job.created_at.desc()))
+    result = await session.execute(select(Job).order_by(Job.created_at.desc()).limit(100))
     jobs = result.scalars().all()
     return templates.TemplateResponse("history.html", {"request": request, "active_page": "history", "jobs": jobs})
 
