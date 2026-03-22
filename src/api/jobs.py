@@ -238,7 +238,7 @@ async def embed_subtitles(
 ):
     """Start video editing (subtitle embedding + logo overlay)."""
     job = await _get_job_or_404(session, job_id)
-    if job.status != "completed":
+    if job.status not in ("completed", "failed"):
         raise HTTPException(status_code=400, detail="Job must be completed before embedding")
     if not job.srt_path:
         raise HTTPException(status_code=400, detail="No SRT file available")
