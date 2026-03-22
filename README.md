@@ -52,19 +52,42 @@ cp .env.example .env
 docker compose up --build
 ```
 
+### Docker on WSL2 (Windows)
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) for Windows
+2. Settings → General → "Use the WSL 2 based engine" (enable)
+3. Settings → Resources → WSL Integration → Enable for your distro
+4. Restart Docker Desktop
+5. In WSL terminal:
+```bash
+# Verify Docker is available
+docker --version
+
+# Clone and start
+git clone https://github.com/JFK/voicesrt.git
+cd voicesrt
+cp .env.example .env
+# Set ENCRYPTION_KEY in .env
+docker compose up --build
+# Open http://localhost:8000
+```
+
 ## Usage
 
 ### 1. Configure API Keys
 Go to the Settings page and enter your OpenAI / Google API keys.
 
-### 2. Upload MP4
-On the Upload page, drag & drop or select an MP4 file. Choose a provider (Whisper/Gemini) and language, then upload.
+### 2. Upload Media
+On the Upload page, drag & drop or select a file (MP4, MP3, WAV, etc.). Choose a provider (Whisper/Gemini) and language, then upload.
 
 ### 3. Download SRT
 On the History page, click the "SRT" button on completed jobs to download.
 
 ### 4. YouTube Metadata
-Check "Generate YouTube metadata" during upload. View and copy the generated title, description (with chapter index), and tags from the "Meta" button on the History page.
+On the History page, click "Gen Meta" to open the metadata editor. Customize the prompt, optimize with AI, and generate title, description (with chapters), and tags.
+
+### 5. YouTube Quiz
+Click the "Quiz" button on the History page to auto-generate quiz questions from the video content.
 
 
 ## Provider Comparison

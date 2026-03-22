@@ -80,6 +80,7 @@
                 <span class="text-sm text-gray-600">Starting...</span>
             </div>
         </div>
+        <p x-show="!isDone && elapsed > 0" class="mt-2 text-xs text-gray-400" x-text="'Elapsed: ' + elapsed + 's'"></p>
 
         <!-- Action buttons (shown when done) -->
         <div x-show="isDone" class="mt-4 flex flex-wrap gap-2">
@@ -111,6 +112,8 @@ function uploadForm() {
         enableRefine: true,
         statusHtml: '',
         pollTimer: null,
+        elapsedTimer: null,
+        elapsed: 0,
         uploading: false,
         jobId: null,
         isDone: false,
@@ -140,10 +143,9 @@ function uploadForm() {
             this.statusHtml = '';
             this.isDone = false;
             this.isCompleted = false;
-            if (this.pollTimer) {
-                clearInterval(this.pollTimer);
-                this.pollTimer = null;
-            }
+            if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
+            if (this.elapsedTimer) { clearInterval(this.elapsedTimer); this.elapsedTimer = null; }
+            this.elapsed = 0;
         },
         async submitForm() {
             if (!this.file) return;
@@ -175,6 +177,9 @@ function uploadForm() {
 
         startPolling(jobId) {
             if (this.pollTimer) clearInterval(this.pollTimer);
+            if (this.elapsedTimer) clearInterval(this.elapsedTimer);
+            this.elapsed = 0;
+            this.elapsedTimer = setInterval(() => this.elapsed++, 1000);
             this.pollTimer = setInterval(async () => {
                 try {
                     const res = await fetch(`/api/jobs/${jobId}/status`, {
@@ -184,6 +189,7 @@ function uploadForm() {
                     if (this.statusHtml.includes('completed') || this.statusHtml.includes('failed')) {
                         clearInterval(this.pollTimer);
                         this.pollTimer = null;
+                        if (this.elapsedTimer) { clearInterval(this.elapsedTimer); this.elapsedTimer = null; }
                         this.isDone = true;
                         this.isCompleted = this.statusHtml.includes('completed');
                     }

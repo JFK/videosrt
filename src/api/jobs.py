@@ -280,6 +280,42 @@ async def _generate_meta_job(job_id: str, custom_prompt: str | None = None, fixe
             await session.commit()
 
 
+@router.post("/{job_id}/generate-catchphrase")
+async def generate_catchphrase_endpoint(
+    job_id: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate thumbnail catchphrase suggestions from SRT."""
+    from src.services.catchphrase import generate_catchphrases
+    from src.services.cost import estimate_llm_cost, log_cost
+    from src.services.transcribe import _get_api_key, _get_model
+
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=400, detail="No SRT file available")
+
+    try:
+        srt_content = Path(job.srt_path).read_text(encoding="utf-8")
+        api_key = await _get_api_key(session, job.provider)
+        model = await _get_model(session, job.provider)
+        provider_name = get_provider_name(job.provider)
+
+        phrases, input_tokens, output_tokens = await generate_catchphrases(
+            srt_content, api_key, provider_name, model
+        )
+
+        cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
+        await log_cost(
+            session, job.id, provider_name, model, "catchphrase_generation", cost,
+            input_tokens=input_tokens, output_tokens=output_tokens,
+        )
+
+        return {"catchphrases": phrases}
+    except Exception as e:
+        logger.exception("Catchphrase generation failed for job %s", job_id)
+        return {"catchphrases": None, "error": str(e)[:300]}
+
+
 @router.post("/{job_id}/generate-quiz")
 async def generate_quiz_endpoint(
     job_id: str,

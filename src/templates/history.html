@@ -49,6 +49,8 @@
                     {% endif %}
 
                     {% if job.srt_path and job.status in ('completed', 'failed') %}
+                    <button onclick="generateCatchphrase('{{ job.id }}')"
+                            class="text-pink-600 hover:text-pink-800 font-medium">Thumb</button>
                     <button onclick="generateQuiz('{{ job.id }}')"
                             class="text-emerald-600 hover:text-emerald-800 font-medium">Quiz</button>
                     {% endif %}
@@ -77,6 +79,18 @@
             <button onclick="document.getElementById('meta-modal').style.display='none'" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
         </div>
         <div id="meta-content" class="space-y-4"></div>
+    </div>
+</div>
+
+<!-- Catchphrase Modal -->
+<div id="catchphrase-modal" style="display:none" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+     onclick="if(event.target===this)this.style.display='none'">
+    <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Thumbnail Catchphrases</h3>
+            <button onclick="document.getElementById('catchphrase-modal').style.display='none'" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <div id="catchphrase-content"></div>
     </div>
 </div>
 
@@ -128,6 +142,38 @@ async function showMetaModal(jobId) {
                         class="px-3 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md text-xs hover:bg-gray-200">Copy</button>
             </div>
         </div>` : ''}`;
+}
+
+async function generateCatchphrase(jobId) {
+    const modal = document.getElementById('catchphrase-modal');
+    const content = document.getElementById('catchphrase-content');
+    modal.style.display = 'flex';
+    content.innerHTML = '<div class="flex items-center space-x-2"><div class="animate-spin h-4 w-4 border-2 border-pink-600 border-t-transparent rounded-full"></div><span class="text-sm text-gray-600">Generating...</span></div>';
+
+    try {
+        const res = await fetch(`/api/jobs/${jobId}/generate-catchphrase`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.catchphrases) {
+            let html = '<div class="space-y-2">';
+            data.catchphrases.forEach(p => {
+                html += `<div class="flex items-center justify-between border rounded-lg p-3">
+                    <div>
+                        <span class="font-bold text-lg">${p.text}</span>
+                        <span class="ml-2 text-xs text-gray-400">${p.style || ''}</span>
+                    </div>
+                    <button onclick="navigator.clipboard.writeText('${p.text.replace(/'/g, "\\'")}'); this.textContent='Copied!'"
+                            class="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs hover:bg-gray-200">Copy</button>
+                </div>`;
+            });
+            html += '</div>';
+            content.innerHTML = html;
+        } else {
+            content.innerHTML = '<p class="text-red-600 text-sm">Failed: ' + (data.error || 'Unknown error') + '</p>';
+        }
+    } catch (e) {
+        content.innerHTML = '<p class="text-red-600 text-sm">Failed: ' + e.message + '</p>';
+    }
 }
 
 async function generateQuiz(jobId) {
