@@ -38,6 +38,10 @@
                        class="text-blue-600 hover:text-blue-800 font-medium">SRT</a>
                     {% endif %}
 
+                    {% if job.srt_path and job.status in ('completed', 'failed') and not job.youtube_title %}
+                    <button onclick="generateMeta('{{ job.id }}')"
+                            class="text-yellow-600 hover:text-yellow-800 font-medium">Gen Meta</button>
+                    {% endif %}
 
                     {% if job.youtube_title %}
                     <button @click="showMeta = !showMeta"
@@ -69,6 +73,17 @@
                                                 class="mt-1 px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-xs hover:bg-gray-200">Copy Description</button>
                                     </div>
                                 </div>
+                                {% if job.youtube_tags %}
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Tags</label>
+                                    <div class="mt-1 flex">
+                                        <input type="text" value="{{ job.youtube_tags }}" readonly
+                                               class="flex-1 rounded-l-md border-gray-300 text-sm p-2 border bg-gray-50">
+                                        <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value)"
+                                                class="px-3 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md text-xs hover:bg-gray-200">Copy</button>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -89,6 +104,27 @@
     </table>
 </div>
 
-
-
+<script>
+async function generateMeta(jobId) {
+    const btn = event.target;
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+    try {
+        await fetch(`/api/jobs/${jobId}/generate-meta`, { method: 'POST' });
+        // Poll until done
+        const poll = setInterval(async () => {
+            const res = await fetch(`/api/jobs/${jobId}`);
+            const job = await res.json();
+            if (job.youtube_title || job.status === 'failed') {
+                clearInterval(poll);
+                location.reload();
+            }
+        }, 2000);
+    } catch (e) {
+        btn.textContent = 'Gen Meta';
+        btn.disabled = false;
+        alert('Failed: ' + e.message);
+    }
+}
+</script>
 {% endblock %}

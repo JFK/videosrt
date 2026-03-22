@@ -191,6 +191,49 @@ async def download_srt(job_id: str, session: AsyncSession = Depends(get_session)
 
 
 
+@router.post("/{job_id}/generate-meta")
+async def generate_meta(
+    job_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate YouTube metadata for a completed job."""
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=400, detail="No SRT file available")
+
+    background_tasks.add_task(_generate_meta_job, job_id)
+    return {"status": "generating_metadata"}
+
+
+async def _generate_meta_job(job_id: str) -> None:
+    """Background task: generate YouTube metadata from existing SRT."""
+    from src.services.transcribe import _get_api_key, _run_metadata_generation
+
+    async with async_session() as session:
+        result = await session.execute(select(Job).where(Job.id == job_id))
+        job = result.scalar_one_or_none()
+        if not job or not job.srt_path:
+            return
+
+        try:
+            job.status = "generating_metadata"
+            await session.commit()
+
+            srt_content = Path(job.srt_path).read_text(encoding="utf-8")
+            api_key = await _get_api_key(session, job.provider)
+            await _run_metadata_generation(job, session, srt_content, api_key)
+
+            job.status = "completed"
+            await session.commit()
+            logger.info("Metadata generated for job %s", job_id)
+        except Exception as e:
+            logger.exception("Metadata generation failed for job %s", job_id)
+            job.status = "failed"
+            job.error_message = f"Metadata generation failed: {str(e)[:400]}"
+            await session.commit()
+
+
 @router.delete("/{job_id}")
 async def delete_job(job_id: str, session: AsyncSession = Depends(get_session)):
     job = await _get_job_or_404(session, job_id)
