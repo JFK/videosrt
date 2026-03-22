@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Web application that generates SRT subtitle files from MP4 videos using AI transcription, with YouTube metadata auto-generation and video editing (subtitle embedding, logo overlay).
+Web application that generates SRT subtitle files from MP4 videos using AI transcription, with YouTube metadata auto-generation.
 
 ## Tech Stack
 
@@ -11,8 +11,7 @@ Web application that generates SRT subtitle files from MP4 videos using AI trans
 - **DB**: SQLite (SQLAlchemy 2.0 async + aiosqlite)
 - **Transcription**: OpenAI Whisper API / Google Gemini API
 - **Metadata Generation**: OpenAI GPT / Google Gemini
-- **Video Processing**: ffmpeg
-- **Font**: Noto Sans CJK JP (free, installed via apt-get in Docker)
+- **Audio Processing**: ffmpeg
 - **Deployment**: Docker (single container)
 
 ## Setup Instructions
@@ -22,7 +21,7 @@ When asked to set up this project, follow these steps:
 ### Prerequisites
 - Python 3.11+
 - ffmpeg (`apt-get install ffmpeg` or `brew install ffmpeg`)
-- For subtitle embedding: Noto Sans CJK JP font (`apt-get install fonts-noto-cjk`)
+
 
 ### Steps
 
@@ -70,7 +69,7 @@ src/
 │   ├── transcribe.py # Orchestrator
 │   ├── srt.py       # SRT generation
 │   ├── metadata.py  # YouTube metadata generation
-│   ├── video_edit.py # Video editing (subtitle embed / logo)
+
 │   ├── crypto.py    # API key encryption
 │   ├── cost.py      # Cost calculation
 │   └── utils.py     # Shared utilities

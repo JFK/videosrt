@@ -120,18 +120,6 @@
                 class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">Save Glossary</button>
     </div>
 
-    <!-- Logo Upload -->
-    <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Logo</h2>
-        <p class="text-sm text-gray-500 mb-4">Upload a logo image to overlay on videos (top-left corner).</p>
-        <div class="flex items-center space-x-4">
-            <input type="file" accept="image/*" @change="uploadLogo($event)" class="text-sm">
-            <button @click="deleteLogo()" class="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200">
-                Remove Logo
-            </button>
-        </div>
-        <p x-show="logoMsg" class="mt-2 text-sm text-green-600" x-text="logoMsg"></p>
-    </div>
 
     <!-- Status Message (fixed toast) -->
     <div x-show="statusMsg" x-cloak
@@ -175,7 +163,6 @@ function settingsPage() {
         generalSettings: {},
         glossary: '',
         statusMsg: '',
-        logoMsg: '',
 
         async loadSettings() {
             // Load keys
@@ -266,21 +253,6 @@ function settingsPage() {
             this.showStatus(`${key} set to ${value}`);
         },
 
-        async uploadLogo(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('file', file);
-            await fetch('/api/settings/logo', { method: 'POST', body: formData });
-            this.logoMsg = 'Logo uploaded';
-            setTimeout(() => this.logoMsg = '', 3000);
-        },
-
-        async deleteLogo() {
-            await fetch('/api/settings/logo', { method: 'DELETE' });
-            this.logoMsg = 'Logo removed';
-            setTimeout(() => this.logoMsg = '', 3000);
-        },
 
         showStatus(msg) {
             this.statusMsg = msg;

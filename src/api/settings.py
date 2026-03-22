@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -202,25 +202,6 @@ async def set_general_setting(key: str, body: GeneralSettingInput, session: Asyn
     await session.commit()
     return {"key": key, "value": body.value}
 
-
-@router.post("/logo")
-async def upload_logo(file: UploadFile, session: AsyncSession = Depends(get_session)):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file provided")
-
-    logo_path = app_settings.assets_dir / "logo.png"
-    logo_path.parent.mkdir(parents=True, exist_ok=True)
-    content = await file.read()
-    logo_path.write_bytes(content)
-    return {"uploaded": True, "path": str(logo_path)}
-
-
-@router.delete("/logo")
-async def delete_logo():
-    logo_path = app_settings.assets_dir / "logo.png"
-    if logo_path.exists():
-        logo_path.unlink()
-    return {"deleted": True}
 
 
 def _mask_key(key: str) -> str:

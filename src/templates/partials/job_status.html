@@ -4,7 +4,7 @@
     'transcribing': 'bg-blue-100 text-blue-800',
     'refining': 'bg-cyan-100 text-cyan-800',
     'generating_metadata': 'bg-purple-100 text-purple-800',
-    'editing_video': 'bg-indigo-100 text-indigo-800',
+
     'completed': 'bg-green-100 text-green-800',
     'failed': 'bg-red-100 text-red-800',
 } %}
@@ -17,5 +17,5 @@
     {{ job.status }}
 </span>
 {% if job.error_message %}
-<p class="text-xs text-red-600 mt-1">{{ job.error_message }}</p>
+<p class="text-xs text-red-600 mt-1 max-w-xs truncate" title="{{ job.error_message }}">{{ job.error_message }}</p>
 {% endif %}

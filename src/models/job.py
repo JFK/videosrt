@@ -23,7 +23,7 @@ class Job(Base):
     language: Mapped[str | None] = mapped_column(String, nullable=True)
     audio_duration: Mapped[float | None] = mapped_column(Float, nullable=True)
     srt_path: Mapped[str | None] = mapped_column(String, nullable=True)
-    output_video_path: Mapped[str | None] = mapped_column(String, nullable=True)
+
     youtube_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     youtube_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     youtube_tags: Mapped[str | None] = mapped_column(Text, nullable=True)

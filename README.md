@@ -9,7 +9,7 @@ MP4動画からAI文字起こしでSRT字幕ファイルを生成するWebアプ
 - **AI Transcription**: High-accuracy speech recognition via OpenAI Whisper API / Google Gemini API
 - **SRT Generation**: Auto-generate timestamped SRT subtitle files
 - **YouTube Metadata**: Auto-generate title, description (with chapter index), and tags
-- **Video Editing**: Embed subtitles (with translucent highlight background) and logo overlay
+
 - **Cost Dashboard**: Track API costs by provider, month, and operation
 - **Web UI Settings**: Manage API keys and LLM models from the browser
 
@@ -64,8 +64,6 @@ On the History page, click the "SRT" button on completed jobs to download.
 ### 4. YouTube Metadata
 Check "Generate YouTube metadata" during upload. View and copy the generated title, description (with chapter index), and tags from the "Meta" button on the History page.
 
-### 5. Embed Subtitles
-Click the "Embed" button on the History page to burn subtitles and/or a logo into the video.
 
 ## Provider Comparison
 

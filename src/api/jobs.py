@@ -69,30 +69,6 @@ async def _process_job(job_id: str) -> None:
             await session.commit()
 
 
-async def _embed_job(job_id: str, do_srt: bool, do_logo: bool) -> None:
-    """Background task: embed subtitles and/or logo into video."""
-    from src.services.video_edit import embed_video
-
-    async with async_session() as session:
-        result = await session.execute(select(Job).where(Job.id == job_id))
-        job = result.scalar_one_or_none()
-        if not job:
-            return
-        try:
-            job.status = "editing_video"
-            await session.commit()
-            logger.info("Starting video embed for job %s (srt=%s, logo=%s)", job_id, do_srt, do_logo)
-            output_path = await embed_video(job, do_srt, do_logo)
-            job.output_video_path = str(output_path)
-            job.status = "completed"
-            await session.commit()
-            logger.info("Video embed completed for job %s: %s", job_id, output_path)
-        except Exception as e:
-            logger.exception("Video embedding failed for job %s", job_id)
-            job.status = "failed"
-            job.error_message = f"Video editing failed: {str(e)[:400]}"
-            await session.commit()
-
 
 @router.post("")
 async def create_job(
@@ -179,7 +155,7 @@ async def get_job(job_id: str, session: AsyncSession = Depends(get_session)):
         "language": job.language,
         "audio_duration": job.audio_duration,
         "srt_path": job.srt_path,
-        "output_video_path": job.output_video_path,
+
         "youtube_title": job.youtube_title,
         "youtube_description": job.youtube_description,
         "youtube_tags": job.youtube_tags,
@@ -214,38 +190,6 @@ async def download_srt(job_id: str, session: AsyncSession = Depends(get_session)
     return FileResponse(srt_file, filename=download_name, media_type="text/plain")
 
 
-@router.get("/{job_id}/download-video")
-async def download_video(job_id: str, session: AsyncSession = Depends(get_session)):
-    job = await _get_job_or_404(session, job_id)
-    if not job.output_video_path:
-        raise HTTPException(status_code=404, detail="Edited video not found")
-
-    video_file = Path(job.output_video_path).resolve()
-    if not video_file.exists():
-        raise HTTPException(status_code=404, detail="Video file not found on disk")
-
-    download_name = Path(_safe_filename(job.filename)).stem + "_subtitled.mp4"
-    return FileResponse(video_file, filename=download_name, media_type="video/mp4")
-
-
-@router.post("/{job_id}/embed")
-async def embed_subtitles(
-    job_id: str,
-    embed_srt: bool = True,
-    embed_logo: bool = False,
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-    session: AsyncSession = Depends(get_session),
-):
-    """Start video editing (subtitle embedding + logo overlay)."""
-    job = await _get_job_or_404(session, job_id)
-    if job.status not in ("completed", "failed"):
-        raise HTTPException(status_code=400, detail="Job must be completed before embedding")
-    if not job.srt_path:
-        raise HTTPException(status_code=400, detail="No SRT file available")
-
-    background_tasks.add_task(_embed_job, job_id, embed_srt, embed_logo)
-    return {"status": "editing_video"}
-
 
 @router.delete("/{job_id}")
 async def delete_job(job_id: str, session: AsyncSession = Depends(get_session)):
@@ -256,7 +200,7 @@ async def delete_job(job_id: str, session: AsyncSession = Depends(get_session)):
     await session.commit()
 
     # Clean up files (best effort)
-    for path_str in [job.srt_path, job.output_video_path]:
+    for path_str in [job.srt_path]:
         if path_str:
             Path(path_str).unlink(missing_ok=True)
 
