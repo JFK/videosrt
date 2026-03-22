@@ -21,6 +21,10 @@ class ModelInput(BaseModel):
     model: str
 
 
+class GeneralSettingInput(BaseModel):
+    value: str
+
+
 @router.get("/keys")
 async def list_keys(session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(Setting).where(Setting.encrypted == True))  # noqa: E712
@@ -131,6 +135,45 @@ async def set_model(provider: str, body: ModelInput, session: AsyncSession = Dep
 
     await session.commit()
     return {"provider": provider, "model": body.model}
+
+
+GENERAL_SETTINGS = {
+    "max_upload_size_gb": {"default": str(app_settings.max_upload_size_gb), "label": "Max Upload Size (GB)"},
+}
+
+
+@router.get("/general")
+async def get_general_settings(session: AsyncSession = Depends(get_session)):
+    result = {}
+    for key, meta in GENERAL_SETTINGS.items():
+        db_key = f"general.{key}"
+        r = await session.execute(select(Setting).where(Setting.key == db_key))
+        setting = r.scalar_one_or_none()
+        result[key] = {
+            "value": setting.value if setting else meta["default"],
+            "label": meta["label"],
+        }
+    return result
+
+
+@router.put("/general/{key}")
+async def set_general_setting(key: str, body: GeneralSettingInput, session: AsyncSession = Depends(get_session)):
+    if key not in GENERAL_SETTINGS:
+        raise HTTPException(status_code=400, detail=f"Unknown setting: {key}")
+
+    db_key = f"general.{key}"
+    result = await session.execute(select(Setting).where(Setting.key == db_key))
+    setting = result.scalar_one_or_none()
+
+    if setting:
+        setting.value = body.value
+        setting.updated_at = datetime.now(UTC)
+    else:
+        setting = Setting(key=db_key, value=body.value, encrypted=False)
+        session.add(setting)
+
+    await session.commit()
+    return {"key": key, "value": body.value}
 
 
 @router.post("/logo")

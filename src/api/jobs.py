@@ -18,7 +18,21 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
-MAX_UPLOAD_SIZE = settings.max_upload_size_gb * 1024 * 1024 * 1024
+DEFAULT_MAX_UPLOAD_SIZE = settings.max_upload_size_gb * 1024 * 1024 * 1024
+
+
+async def _get_max_upload_size(session: AsyncSession) -> int:
+    """Get max upload size from DB settings, fallback to config default."""
+    from src.models import Setting
+
+    result = await session.execute(select(Setting).where(Setting.key == "general.max_upload_size_gb"))
+    setting = result.scalar_one_or_none()
+    if setting:
+        try:
+            return int(setting.value) * 1024 * 1024 * 1024
+        except ValueError:
+            pass
+    return DEFAULT_MAX_UPLOAD_SIZE
 
 # Sanitize filenames to prevent path traversal
 _SAFE_FILENAME_RE = re.compile(r"[^\w\s\-.]", re.UNICODE)
@@ -95,15 +109,16 @@ async def create_job(
     upload_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Stream file to disk to handle large files without OOM
+    max_size = await _get_max_upload_size(session)
     file_size = 0
     try:
         async with aiofiles.open(upload_path, "wb") as out:
             while chunk := await file.read(8 * 1024 * 1024):  # 8MB chunks
                 file_size += len(chunk)
-                if file_size > MAX_UPLOAD_SIZE:
+                if file_size > max_size:
                     await out.close()
                     upload_path.unlink(missing_ok=True)
-                    raise HTTPException(status_code=413, detail=f"File too large. Max size is {MAX_UPLOAD_SIZE // (1024**3)}GB")
+                    raise HTTPException(status_code=413, detail=f"File too large. Max size is {max_size // (1024**3)}GB")
                 await out.write(chunk)
     except HTTPException:
         raise

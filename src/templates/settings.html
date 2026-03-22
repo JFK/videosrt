@@ -88,6 +88,24 @@
         </div>
     </div>
 
+    <!-- General Settings -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">General</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <template x-for="(info, key) in generalSettings" :key="key">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" x-text="info.label"></label>
+                    <div class="flex space-x-2">
+                        <input type="text" x-model="info.value"
+                               class="flex-1 rounded-md border-gray-300 text-sm p-2 border">
+                        <button @click="saveGeneral(key, info.value)"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">Save</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
     <!-- Logo Upload -->
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-lg font-medium text-gray-900 mb-4">Logo</h2>
@@ -133,6 +151,7 @@ function settingsPage() {
                 desc: 'Budget: gpt-5.4-nano + gemini-3.1-flash-lite — Lowest cost'
             }
         },
+        generalSettings: {},
         statusMsg: '',
         logoMsg: '',
 
@@ -151,6 +170,9 @@ function settingsPage() {
             const modelsRes = await fetch('/api/settings/models');
             const modelsData = await modelsRes.json();
             this.models = { ...this.models, ...modelsData };
+            // Load general settings
+            const generalRes = await fetch('/api/settings/general');
+            this.generalSettings = await generalRes.json();
         },
 
         async saveKey(p) {
@@ -198,6 +220,15 @@ function settingsPage() {
                 body: JSON.stringify({ model })
             });
             this.showStatus(`${provider} model set to ${model}`);
+        },
+
+        async saveGeneral(key, value) {
+            await fetch(`/api/settings/general/${key}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value })
+            });
+            this.showStatus(`${key} set to ${value}`);
         },
 
         async uploadLogo(e) {
