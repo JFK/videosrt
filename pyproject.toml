@@ -1,5 +1,5 @@
 [project]
-name = "videosrt"
+name = "voicesrt"
 version = "0.1.0"
 description = "MP4 to SRT subtitle generator with YouTube metadata and video editing"
 requires-python = ">=3.11"

@@ -1,4 +1,4 @@
-# VideoSRT - Development Guide
+# VoiceSRT - Development Guide
 
 ## Project Overview
 

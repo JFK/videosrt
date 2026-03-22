@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="VideoSRT", lifespan=lifespan)
+app = FastAPI(title="VoiceSRT", lifespan=lifespan)
 
 # Static files
 static_dir = Path(__file__).parent / "static"

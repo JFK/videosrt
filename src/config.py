@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "VideoSRT"
+    app_name: str = "VoiceSRT"
     data_dir: Path = Path("data")
     encryption_key: str = ""
 
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
-        return f"sqlite+aiosqlite:///{self.data_dir / 'db' / 'videosrt.db'}"
+        return f"sqlite+aiosqlite:///{self.data_dir / 'db' / 'voicesrt.db'}"
 
     @property
     def uploads_dir(self) -> Path:

@@ -1,4 +1,4 @@
-# VideoSRT
+# VoiceSRT
 
 Generate SRT subtitle files from video/audio using AI transcription.
 
@@ -20,8 +20,8 @@ Generate SRT subtitle files from video/audio using AI transcription.
 ### With Claude Code (Recommended)
 
 ```bash
-git clone https://github.com/JFK/videosrt.git
-cd videosrt
+git clone https://github.com/JFK/voicesrt.git
+cd voicesrt
 claude
 # Then tell Claude: "Set up this project"
 ```
