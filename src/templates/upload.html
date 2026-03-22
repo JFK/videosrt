@@ -50,12 +50,21 @@
             </div>
         </div>
 
-        <div class="flex items-center">
-            <input type="checkbox" x-model="enableMetadata" id="enableMetadata"
-                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-            <label for="enableMetadata" class="ml-2 text-sm text-gray-700">
-                Generate YouTube metadata (title, description, chapters)
-            </label>
+        <div class="space-y-2">
+            <div class="flex items-center">
+                <input type="checkbox" x-model="enableRefine" id="enableRefine"
+                       class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <label for="enableRefine" class="ml-2 text-sm text-gray-700">
+                    LLM post-processing (fix proper nouns, punctuation, fillers)
+                </label>
+            </div>
+            <div class="flex items-center">
+                <input type="checkbox" x-model="enableMetadata" id="enableMetadata"
+                       class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <label for="enableMetadata" class="ml-2 text-sm text-gray-700">
+                    Generate YouTube metadata (title, description, chapters)
+                </label>
+            </div>
         </div>
 
         <!-- Submit -->
@@ -85,6 +94,7 @@ function uploadForm() {
         file: null,
         provider: 'whisper',
         language: '',
+        enableRefine: true,
         enableMetadata: false,
         uploading: false,
         jobId: null,
@@ -116,6 +126,7 @@ function uploadForm() {
             params.set('provider', this.provider);
             if (this.language) params.set('language', this.language);
             params.set('enable_metadata', this.enableMetadata);
+            params.set('enable_refine', this.enableRefine);
 
             try {
                 const res = await fetch('/api/jobs?' + params.toString(), {

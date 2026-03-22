@@ -139,7 +139,34 @@ async def set_model(provider: str, body: ModelInput, session: AsyncSession = Dep
 
 GENERAL_SETTINGS = {
     "max_upload_size_gb": {"default": str(app_settings.max_upload_size_gb), "label": "Max Upload Size (GB)"},
+    "refine_model_openai": {"default": "gpt-5.4-nano", "label": "Refine Model (OpenAI)"},
+    "refine_model_gemini": {"default": "gemini-3.1-flash-lite", "label": "Refine Model (Gemini)"},
 }
+
+
+@router.get("/glossary")
+async def get_glossary(session: AsyncSession = Depends(get_session)):
+    db_key = "glossary"
+    result = await session.execute(select(Setting).where(Setting.key == db_key))
+    setting = result.scalar_one_or_none()
+    return {"glossary": setting.value if setting else ""}
+
+
+@router.put("/glossary")
+async def set_glossary(body: GeneralSettingInput, session: AsyncSession = Depends(get_session)):
+    db_key = "glossary"
+    result = await session.execute(select(Setting).where(Setting.key == db_key))
+    setting = result.scalar_one_or_none()
+
+    if setting:
+        setting.value = body.value
+        setting.updated_at = datetime.now(UTC)
+    else:
+        setting = Setting(key=db_key, value=body.value, encrypted=False)
+        session.add(setting)
+
+    await session.commit()
+    return {"glossary": body.value}
 
 
 @router.get("/general")

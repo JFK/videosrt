@@ -68,13 +68,23 @@ async def process_transcription(job: Job, session: AsyncSession) -> None:
 
         segments = await _run_transcription(job, session, audio_path, api_key, duration)
 
-        # Step 3: Generate and save SRT
+        # Step 3: LLM post-processing (refine) if enabled
+        if job.enable_refine:
+            job.status = "refining"
+            await session.commit()
+            try:
+                segments = await _run_refinement(job, session, segments, api_key)
+            except Exception as e:
+                logger.warning("Refinement failed for job %s: %s", job.id, e)
+                job.error_message = f"Refinement failed, using raw transcription: {str(e)[:300]}"
+
+        # Step 4: Generate and save SRT
         srt_content = generate_srt(segments)
         srt_path = settings.srt_dir / f"{job.id}.srt"
         save_srt(srt_content, srt_path)
         job.srt_path = str(srt_path)
 
-        # Step 4: Generate metadata if enabled (non-fatal)
+        # Step 5: Generate metadata if enabled (non-fatal)
         if job.enable_metadata:
             job.status = "generating_metadata"
             await session.commit()
@@ -177,3 +187,35 @@ async def _run_metadata_generation(
         session, job.id, provider_name, model, "metadata_generation", cost,
         input_tokens=input_tokens, output_tokens=output_tokens,
     )
+
+
+async def _run_refinement(
+    job: Job, session: AsyncSession, segments: list[dict], api_key: str
+) -> list[dict]:
+    """Refine segments using LLM post-processing and log cost."""
+    from src.services.refine import refine_with_llm
+
+    provider_name = "openai" if job.provider == "whisper" else "gemini"
+
+    # Get refine model from settings
+    refine_key = f"general.refine_model_{provider_name}"
+    result = await session.execute(select(Setting).where(Setting.key == refine_key))
+    setting = result.scalar_one_or_none()
+    refine_model = setting.value if setting else ("gpt-5.4-nano" if provider_name == "openai" else "gemini-3.1-flash-lite")
+
+    # Get glossary
+    result = await session.execute(select(Setting).where(Setting.key == "glossary"))
+    glossary_setting = result.scalar_one_or_none()
+    glossary = glossary_setting.value if glossary_setting else ""
+
+    refined, input_tokens, output_tokens = await refine_with_llm(
+        segments, api_key, provider_name, refine_model, glossary
+    )
+
+    cost = estimate_llm_cost(input_tokens, output_tokens, refine_model, provider_name)
+    await log_cost(
+        session, job.id, provider_name, refine_model, "refinement", cost,
+        input_tokens=input_tokens, output_tokens=output_tokens,
+    )
+
+    return refined

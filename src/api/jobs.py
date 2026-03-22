@@ -98,6 +98,7 @@ async def create_job(
     provider: str = "whisper",
     language: str | None = None,
     enable_metadata: bool = False,
+    enable_refine: bool = False,
     background_tasks: BackgroundTasks = BackgroundTasks(),
     session: AsyncSession = Depends(get_session),
 ):
@@ -134,6 +135,7 @@ async def create_job(
             provider=provider,
             language=language,
             enable_metadata=enable_metadata,
+            enable_refine=enable_refine,
         )
         session.add(job)
         await session.commit()
