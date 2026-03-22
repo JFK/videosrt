@@ -1,19 +1,22 @@
+import json
+import logging
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import CostLog
+from src.models import CostLog, Setting
 
-# Pricing constants (updated March 2026)
-WHISPER_COST_PER_MINUTE = 0.006  # USD
+logger = logging.getLogger(__name__)
 
-GEMINI_PRICING = {
+# Default pricing (updated March 2026)
+DEFAULT_WHISPER_COST_PER_MINUTE = 0.006
+
+DEFAULT_PRICING = {
+    "whisper-1": {"input_per_1m": 0.0, "output_per_1m": 0.0, "per_minute": 0.006},
     "gemini-3.1-flash-lite": {"input_per_1m": 0.25, "output_per_1m": 1.50},
     "gemini-3.1-pro": {"input_per_1m": 1.25, "output_per_1m": 10.00},
     "gemini-2.5-flash": {"input_per_1m": 0.15, "output_per_1m": 0.60},
     "gemini-2.5-pro": {"input_per_1m": 1.25, "output_per_1m": 10.00},
-}
-GEMINI_AUDIO_TOKENS_PER_SECOND = 32
-
-OPENAI_PRICING = {
     "gpt-5.4": {"input_per_1m": 2.50, "output_per_1m": 15.00},
     "gpt-5.4-mini": {"input_per_1m": 0.40, "output_per_1m": 1.60},
     "gpt-5.4-nano": {"input_per_1m": 0.10, "output_per_1m": 0.40},
@@ -23,27 +26,64 @@ OPENAI_PRICING = {
     "gpt-4o-mini": {"input_per_1m": 0.15, "output_per_1m": 0.60},
 }
 
+GEMINI_AUDIO_TOKENS_PER_SECOND = 32
+
+# In-memory cache (loaded from DB on first use)
+_pricing_cache: dict | None = None
+
+
+def _get_pricing() -> dict:
+    """Get pricing dict (defaults, may be overridden by DB)."""
+    global _pricing_cache
+    if _pricing_cache is not None:
+        return _pricing_cache
+    return DEFAULT_PRICING
+
+
+def set_pricing_cache(pricing: dict) -> None:
+    """Set pricing cache from DB values."""
+    global _pricing_cache
+    _pricing_cache = pricing
+
+
+def get_model_pricing(model: str) -> dict:
+    """Get pricing for a specific model."""
+    pricing = _get_pricing()
+    return pricing.get(model, {"input_per_1m": 0.0, "output_per_1m": 0.0})
+
 
 def estimate_whisper_cost(duration_sec: float) -> float:
-    return (duration_sec / 60.0) * WHISPER_COST_PER_MINUTE
+    pricing = get_model_pricing("whisper-1")
+    per_min = pricing.get("per_minute", DEFAULT_WHISPER_COST_PER_MINUTE)
+    return (duration_sec / 60.0) * per_min
 
 
 def estimate_gemini_cost(duration_sec: float, output_tokens: int, model: str = "gemini-3.1-flash-lite") -> float:
-    pricing = GEMINI_PRICING.get(model, GEMINI_PRICING["gemini-3.1-flash-lite"])
+    pricing = get_model_pricing(model)
     input_tokens = duration_sec * GEMINI_AUDIO_TOKENS_PER_SECOND
-    input_cost = (input_tokens / 1_000_000) * pricing["input_per_1m"]
-    output_cost = (output_tokens / 1_000_000) * pricing["output_per_1m"]
+    input_cost = (input_tokens / 1_000_000) * pricing.get("input_per_1m", 0)
+    output_cost = (output_tokens / 1_000_000) * pricing.get("output_per_1m", 0)
     return input_cost + output_cost
 
 
 def estimate_llm_cost(input_tokens: int, output_tokens: int, model: str, provider: str) -> float:
-    if provider == "openai":
-        pricing = OPENAI_PRICING.get(model, OPENAI_PRICING["gpt-5.4"])
-    else:
-        pricing = GEMINI_PRICING.get(model, GEMINI_PRICING["gemini-3.1-flash-lite"])
-    input_cost = (input_tokens / 1_000_000) * pricing["input_per_1m"]
-    output_cost = (output_tokens / 1_000_000) * pricing["output_per_1m"]
+    pricing = get_model_pricing(model)
+    input_cost = (input_tokens / 1_000_000) * pricing.get("input_per_1m", 0)
+    output_cost = (output_tokens / 1_000_000) * pricing.get("output_per_1m", 0)
     return input_cost + output_cost
+
+
+async def load_pricing_from_db(session: AsyncSession) -> None:
+    """Load custom pricing from DB and merge with defaults."""
+    result = await session.execute(select(Setting).where(Setting.key == "pricing"))
+    setting = result.scalar_one_or_none()
+    if setting:
+        try:
+            custom = json.loads(setting.value)
+            merged = {**DEFAULT_PRICING, **custom}
+            set_pricing_cache(merged)
+        except json.JSONDecodeError:
+            logger.warning("Invalid pricing JSON in DB, using defaults")
 
 
 async def log_cost(

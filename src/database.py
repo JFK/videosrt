@@ -33,6 +33,12 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Load custom pricing from DB
+    from src.services.cost import load_pricing_from_db
+
+    async with async_session() as session:
+        await load_pricing_from_db(session)
+
 
 async def get_session():
     async with async_session() as session:

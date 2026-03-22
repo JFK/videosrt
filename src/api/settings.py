@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -201,6 +201,40 @@ async def set_general_setting(key: str, body: GeneralSettingInput, session: Asyn
     await session.commit()
     return {"key": key, "value": body.value}
 
+
+
+@router.get("/pricing")
+async def get_pricing(session: AsyncSession = Depends(get_session)):
+    """Get all model pricing (defaults merged with custom)."""
+    import json as json_mod
+
+    from src.services.cost import DEFAULT_PRICING
+
+    result = await session.execute(select(Setting).where(Setting.key == "pricing"))
+    setting = result.scalar_one_or_none()
+    custom = {}
+    if setting:
+        try:
+            custom = json_mod.loads(setting.value)
+        except Exception:
+            pass
+    merged = {**DEFAULT_PRICING, **custom}
+    return {"pricing": merged, "has_custom": bool(custom)}
+
+
+@router.put("/pricing")
+async def set_pricing(request: Request, session: AsyncSession = Depends(get_session)):
+    """Save custom model pricing."""
+    import json as json_mod
+
+    from src.services.cost import load_pricing_from_db
+
+    body = await request.json()
+    pricing = body.get("pricing", {})
+    await _upsert_setting(session, "pricing", json_mod.dumps(pricing))
+    await session.commit()
+    await load_pricing_from_db(session)
+    return {"saved": True}
 
 
 def _mask_key(key: str) -> str:
