@@ -48,11 +48,19 @@ When asked to set up this project, follow these steps:
 
 4. **Open http://localhost:8000** and configure API keys in Settings page
 
-### Docker (alternative)
+### Docker (recommended for WSL)
+
+WSL環境ではDocker Desktopの利用を推奨します。ffmpegなどの依存がコンテナに含まれるため、ホスト側へのインストールが不要です。
+
 ```bash
 cp .env.example .env
 # Edit .env and set ENCRYPTION_KEY
 docker compose up --build
+```
+
+ポートが使用中の場合は `HOST_PORT` で変更可能:
+```bash
+HOST_PORT=8001 docker compose up --build
 ```
 
 ## Directory Structure

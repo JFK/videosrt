@@ -11,14 +11,14 @@ router = APIRouter()
 
 @router.get("/")
 async def upload_page(request: Request):
-    return templates.TemplateResponse("upload.html", {"request": request, "active_page": "upload"})
+    return templates.TemplateResponse(request, "upload.html", {"active_page": "upload"})
 
 
 @router.get("/history")
 async def history_page(request: Request, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(Job).order_by(Job.created_at.desc()).limit(100))
     jobs = result.scalars().all()
-    return templates.TemplateResponse("history.html", {"request": request, "active_page": "history", "jobs": jobs})
+    return templates.TemplateResponse(request, "history.html", {"active_page": "history", "jobs": jobs})
 
 
 @router.get("/meta/{job_id}")
@@ -28,14 +28,14 @@ async def meta_editor_page(job_id: str, request: Request, session: AsyncSession 
     if not job:
         from fastapi.responses import RedirectResponse
         return RedirectResponse("/history")
-    return templates.TemplateResponse("meta_editor.html", {"request": request, "active_page": "history", "job": job})
+    return templates.TemplateResponse(request, "meta_editor.html", {"active_page": "history", "job": job})
 
 
 @router.get("/costs")
 async def costs_page(request: Request):
-    return templates.TemplateResponse("costs.html", {"request": request, "active_page": "costs"})
+    return templates.TemplateResponse(request, "costs.html", {"active_page": "costs"})
 
 
 @router.get("/settings")
 async def settings_page(request: Request):
-    return templates.TemplateResponse("settings.html", {"request": request, "active_page": "settings"})
+    return templates.TemplateResponse(request, "settings.html", {"active_page": "settings"})

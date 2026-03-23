@@ -176,7 +176,7 @@ async def get_job_status(job_id: str, request: Request, session: AsyncSession = 
     job = await _get_job_or_404(session, job_id)
 
     if request.headers.get("HX-Request"):
-        return templates.TemplateResponse("partials/job_status.html", {"request": request, "job": job})
+        return templates.TemplateResponse(request, "partials/job_status.html", {"job": job})
 
     return {"status": job.status, "error_message": job.error_message}
 
