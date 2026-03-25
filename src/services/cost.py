@@ -13,12 +13,19 @@ DEFAULT_WHISPER_COST_PER_MINUTE = 0.006
 
 DEFAULT_PRICING = {
     "whisper-1": {"input_per_1m": 0.0, "output_per_1m": 0.0, "per_minute": 0.006},
+    # Gemini 3.x series
+    "gemini-3.1-pro": {"input_per_1m": 2.50, "output_per_1m": 15.00},
+    "gemini-3.1-flash-lite": {"input_per_1m": 0.25, "output_per_1m": 1.50},
+    "gemini-3.0-flash": {"input_per_1m": 0.50, "output_per_1m": 3.00},
+    # Gemini 2.5 series
     "gemini-2.5-flash-lite": {"input_per_1m": 0.10, "output_per_1m": 0.40},
     "gemini-2.5-flash": {"input_per_1m": 0.15, "output_per_1m": 0.60},
     "gemini-2.5-pro": {"input_per_1m": 1.25, "output_per_1m": 10.00},
+    # OpenAI GPT-5.4 series
     "gpt-5.4": {"input_per_1m": 2.50, "output_per_1m": 15.00},
-    "gpt-5.4-mini": {"input_per_1m": 0.40, "output_per_1m": 1.60},
-    "gpt-5.4-nano": {"input_per_1m": 0.10, "output_per_1m": 0.40},
+    "gpt-5.4-mini": {"input_per_1m": 0.75, "output_per_1m": 4.50},
+    "gpt-5.4-nano": {"input_per_1m": 0.20, "output_per_1m": 1.25},
+    # Legacy models
     "gpt-4.1": {"input_per_1m": 2.00, "output_per_1m": 8.00},
     "gpt-4.1-mini": {"input_per_1m": 0.40, "output_per_1m": 1.60},
     "gpt-4o": {"input_per_1m": 2.50, "output_per_1m": 10.00},
