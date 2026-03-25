@@ -93,6 +93,21 @@
             <p class="mt-1 text-xs text-gray-500" x-show="refineMode === 'verbatim'">{{ t('upload.refine_verbatim_desc') }}</p>
             <p class="mt-1 text-xs text-gray-500" x-show="refineMode === 'standard'">{{ t('upload.refine_standard_desc') }}</p>
             <p class="mt-1 text-xs text-gray-500" x-show="refineMode === 'caption'">{{ t('upload.refine_caption_desc') }}</p>
+
+            <!-- Verify -->
+            <div class="flex items-center mt-3">
+                <input type="checkbox" x-model="enableVerify" id="enableVerify"
+                       class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <label for="enableVerify" class="ml-2 text-sm text-gray-700">
+                    {{ t('upload.enable_verify') }}
+                </label>
+                <div class="relative inline-block group ml-1">
+                    <span class="cursor-help text-gray-400 hover:text-gray-600 text-sm">?</span>
+                    <div class="invisible group-hover:visible absolute z-10 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg -top-2 left-6">
+                        {{ t('upload.enable_verify_desc') }}
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Submit -->
@@ -146,6 +161,7 @@ function uploadForm() {
         provider: 'whisper',
         language: '',
         enableRefine: true,
+        enableVerify: false,
         refineMode: 'standard',
         glossary: '',
         statusHtml: '',
@@ -222,6 +238,7 @@ function uploadForm() {
             if (this.language) params.set('language', this.language);
             params.set('enable_refine', this.enableRefine);
             if (this.enableRefine) params.set('refine_mode', this.refineMode);
+            if (this.enableRefine && this.enableVerify) params.set('enable_verify', 'true');
 
             try {
                 const res = await fetch('/api/jobs?' + params.toString(), {

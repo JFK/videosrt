@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}SRT Editor - {{ job.filename }}{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="srtEditor()" x-init="loadSegments()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ t('srt_editor.title') }}</h1>
+            <p class="text-sm text-gray-500 mt-1">{{ job.filename }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/api/jobs/{{ job.id }}/download"
+               class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 border border-gray-300">
+                {{ t('srt_editor.download') }}
+            </a>
+            <button @click="saveSegments()" :disabled="saving || !dirty"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                <span x-show="!saving">{{ t('srt_editor.save') }}</span>
+                <span x-show="saving">{{ t('srt_editor.saving') }}</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Save notification -->
+    <div x-show="saveMsg" x-transition class="mb-4 p-3 rounded-md text-sm"
+         :class="saveError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'"
+         x-text="saveMsg"></div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="text-center py-12">
+        <div class="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+        <p class="mt-3 text-sm text-gray-500">{{ t('srt_editor.loading') }}</p>
+    </div>
+
+    <!-- Segments -->
+    <div x-show="!loading" class="space-y-3">
+        <template x-for="(seg, idx) in segments" :key="idx">
+            <div class="bg-white shadow rounded-lg p-4 border-l-4 transition-colors"
+                 :class="verifiedIndices.includes(idx) ? 'border-yellow-400 bg-yellow-50' : 'border-transparent'">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono text-gray-400" x-text="'#' + (idx + 1)"></span>
+                        <span class="text-xs text-gray-500" x-text="formatTime(seg.start) + ' → ' + formatTime(seg.end)"></span>
+                        <span x-show="verifiedIndices.includes(idx)"
+                              class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 cursor-help"
+                              :title="verifyReasons[idx] || ''">
+                            {{ t('srt_editor.verified_badge') }}
+                        </span>
+                    </div>
+                    <button @click="requestSuggestion(idx)" :disabled="suggesting[idx]"
+                            class="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                        <span x-show="!suggesting[idx]">✨ AI</span>
+                        <span x-show="suggesting[idx]" class="flex items-center gap-1">
+                            <span class="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full inline-block"></span>
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Editable text -->
+                <textarea x-model="seg.text" @input="dirty = true" rows="1"
+                          x-ref="textarea"
+                          @input="autoResize($event.target)"
+                          x-init="$nextTick(() => autoResize($el))"
+                          class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2 border resize-none overflow-hidden"></textarea>
+
+                <!-- Verify reason -->
+                <p x-show="verifiedIndices.includes(idx) && verifyReasons[idx]"
+                   class="mt-1 text-xs text-yellow-700">
+                    <span class="font-medium">{{ t('srt_editor.reason') }}:</span>
+                    <span x-text="verifyReasons[idx]"></span>
+                </p>
+
+                <!-- AI Suggestion -->
+                <div x-show="suggestions[idx]" x-transition class="mt-2 p-3 bg-purple-50 rounded-md">
+                    <p class="text-xs text-purple-600 font-medium mb-1">{{ t('srt_editor.suggestion') }}:</p>
+                    <p class="text-sm text-gray-800" x-text="suggestions[idx]?.text"></p>
+                    <p class="text-xs text-gray-500 mt-1" x-text="suggestions[idx]?.reason"></p>
+                    <div class="flex gap-2 mt-2">
+                        <button @click="acceptSuggestion(idx)"
+                                class="text-xs px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">
+                            {{ t('srt_editor.accept') }}
+                        </button>
+                        <button @click="dismissSuggestion(idx)"
+                                class="text-xs px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                            {{ t('srt_editor.dismiss') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Back link -->
+    <div class="mt-6">
+        <a href="/history" class="text-sm text-gray-500 hover:text-gray-700">← {{ t('srt_editor.back_to_history') }}</a>
+    </div>
+</div>
+
+<script>
+function srtEditor() {
+    return {
+        segments: [],
+        verifiedIndices: [],
+        verifyReasons: {},
+        suggestions: {},
+        suggesting: {},
+        loading: true,
+        saving: false,
+        dirty: false,
+        saveMsg: '',
+        saveError: false,
+
+        async loadSegments() {
+            try {
+                const res = await fetch('/api/jobs/{{ job.id }}/segments');
+                if (!res.ok) throw new Error('Failed to load segments');
+                const data = await res.json();
+                this.segments = data.segments;
+                this.verifiedIndices = data.verified_indices || [];
+                this.verifyReasons = data.verify_reasons || {};
+            } catch (e) {
+                console.error(e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async saveSegments() {
+            this.saving = true;
+            this.saveMsg = '';
+            try {
+                const res = await fetch('/api/jobs/{{ job.id }}/segments', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({segments: this.segments}),
+                });
+                if (!res.ok) throw new Error('Save failed');
+                this.dirty = false;
+                this.saveMsg = '{{ t("srt_editor.saved") }}';
+                this.saveError = false;
+                setTimeout(() => this.saveMsg = '', 3000);
+            } catch (e) {
+                this.saveMsg = e.message;
+                this.saveError = true;
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async requestSuggestion(idx) {
+            this.suggesting[idx] = true;
+            try {
+                const res = await fetch(`/api/jobs/{{ job.id }}/segments/${idx}/suggest`, {
+                    method: 'POST',
+                });
+                if (!res.ok) throw new Error('Suggestion failed');
+                const data = await res.json();
+                this.suggestions[idx] = data;
+            } catch (e) {
+                console.error(e);
+            } finally {
+                this.suggesting[idx] = false;
+            }
+        },
+
+        acceptSuggestion(idx) {
+            if (this.suggestions[idx]) {
+                this.segments[idx].text = this.suggestions[idx].text;
+                this.dirty = true;
+                delete this.suggestions[idx];
+            }
+        },
+
+        dismissSuggestion(idx) {
+            delete this.suggestions[idx];
+        },
+
+        formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        },
+
+        autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        },
+    };
+}
+</script>
+{% endblock %}

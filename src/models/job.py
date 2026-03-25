@@ -28,5 +28,8 @@ class Job(Base):
     enable_refine: Mapped[bool] = mapped_column(Boolean, default=False)
     glossary: Mapped[str | None] = mapped_column(Text, nullable=True)
     refine_mode: Mapped[str | None] = mapped_column(String, nullable=True)
+    enable_verify: Mapped[bool] = mapped_column(Boolean, default=False)
+    verified_indices: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verify_reasons: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)

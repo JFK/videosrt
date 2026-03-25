@@ -81,6 +81,7 @@ async def create_job(
     language: str | None = None,
     enable_metadata: bool = False,
     enable_refine: bool = False,
+    enable_verify: bool = False,
     refine_mode: str | None = Query(None),
     glossary: str | None = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
@@ -133,6 +134,7 @@ async def create_job(
             language=language,
             enable_metadata=enable_metadata,
             enable_refine=enable_refine,
+            enable_verify=enable_verify,
             glossary=glossary.strip() if glossary else None,
             refine_mode=refine_mode,
         )
@@ -390,6 +392,112 @@ async def generate_quiz_endpoint(
     except Exception as e:
         logger.exception("Quiz generation failed for job %s", job_id)
         return {"quiz": None, "error": str(e)[:300]}
+
+
+@router.get("/{job_id}/segments")
+async def get_segments(job_id: str, session: AsyncSession = Depends(get_session)):
+    """Get parsed SRT segments with verification highlights."""
+    import json as json_mod
+
+    from src.services.srt import parse_srt
+
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=404, detail="SRT file not found")
+
+    srt_file = Path(job.srt_path).resolve()
+    if not srt_file.exists():
+        raise HTTPException(status_code=404, detail="SRT file not found on disk")
+
+    content = srt_file.read_text(encoding="utf-8")
+    segments = parse_srt(content)
+
+    verified_indices = json_mod.loads(job.verified_indices) if job.verified_indices else []
+    verify_reasons = json_mod.loads(job.verify_reasons) if job.verify_reasons else {}
+
+    return {
+        "segments": segments,
+        "verified_indices": verified_indices,
+        "verify_reasons": verify_reasons,
+    }
+
+
+@router.put("/{job_id}/segments")
+async def update_segments(job_id: str, request: Request, session: AsyncSession = Depends(get_session)):
+    """Update SRT file from edited segments."""
+    from src.services.srt import generate_srt, save_srt
+
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=400, detail="No SRT file available")
+
+    body = await request.json()
+    segments = body.get("segments", [])
+    if not segments:
+        raise HTTPException(status_code=400, detail="No segments provided")
+
+    srt_content = generate_srt(segments)
+    srt_path = Path(job.srt_path).resolve()
+    save_srt(srt_content, srt_path)
+
+    return {"status": "saved", "segment_count": len(segments)}
+
+
+@router.post("/{job_id}/segments/{index}/suggest")
+async def suggest_segment_endpoint(
+    job_id: str,
+    index: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Get AI suggestion for a single segment."""
+    from src.services.cost import estimate_llm_cost, log_cost
+    from src.services.refine import suggest_segment
+    from src.services.srt import parse_srt
+    from src.services.transcribe import _get_api_key, _get_model
+
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=400, detail="No SRT file available")
+
+    srt_file = Path(job.srt_path).resolve()
+    if not srt_file.exists():
+        raise HTTPException(status_code=404, detail="SRT file not found on disk")
+
+    content = srt_file.read_text(encoding="utf-8")
+    segments = parse_srt(content)
+
+    if index < 0 or index >= len(segments):
+        raise HTTPException(status_code=400, detail=f"Invalid segment index: {index}")
+
+    api_key = await _get_api_key(session, job.provider)
+    model = await _get_model(session, job.provider)
+    provider_name = get_provider_name(job.provider)
+
+    # Get glossary
+    from src.models import Setting
+
+    result = await session.execute(select(Setting).where(Setting.key == "glossary"))
+    glossary_setting = result.scalar_one_or_none()
+    global_glossary = glossary_setting.value if glossary_setting else ""
+    job_glossary = job.glossary or ""
+    combined_glossary = "\n".join(filter(None, [global_glossary.strip(), job_glossary.strip()]))
+
+    # Context: 5 segments before/after
+    ctx_before = segments[max(0, index - 5):index]
+    ctx_after = segments[index + 1:index + 6]
+
+    suggested, reason, input_tokens, output_tokens = await suggest_segment(
+        segments[index], ctx_before, ctx_after,
+        api_key, provider_name, model, combined_glossary,
+    )
+
+    cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
+    await log_cost(
+        session, job.id, provider_name, model, "suggestion", cost,
+        input_tokens=input_tokens, output_tokens=output_tokens,
+    )
+
+    return {"text": suggested, "reason": reason}
 
 
 @router.delete("/{job_id}")

@@ -1,10 +1,13 @@
-"""Tests for refine prompt selection and segment extraction."""
+"""Tests for refine prompt selection, segment extraction, and verification."""
 
 from src.services.refine import (
+    _PROMPT_MAP,
     REFINE_CAPTION_PROMPT,
     REFINE_STANDARD_PROMPT,
     REFINE_VERBATIM_PROMPT,
-    _PROMPT_MAP,
+    VERIFY_PROMPT,
+    _build_full_text,
+    _extract_corrections,
     _extract_segments,
 )
 
@@ -105,3 +108,63 @@ def test_extract_segments_unexpected_type_raises():
 
     with pytest.raises(RuntimeError, match="Unexpected response type"):
         _extract_segments("not a dict or list")
+
+
+# --- Verify tests ---
+
+
+def test_verify_prompt_has_placeholders():
+    assert "{full_text}" in VERIFY_PROMPT
+    assert "{glossary_section}" in VERIFY_PROMPT
+
+
+def test_build_full_text():
+    segments = [
+        {"start": 0.0, "end": 1.0, "text": "Hello"},
+        {"start": 1.0, "end": 2.0, "text": "World"},
+    ]
+    result = _build_full_text(segments)
+    assert "[0] Hello" in result
+    assert "[1] World" in result
+
+
+def test_extract_corrections_from_dict():
+    data = {"corrections": [
+        {"index": 0, "text": "fixed", "reason": "typo"},
+        {"index": 2, "text": "also fixed"},
+    ]}
+    result = _extract_corrections(data)
+    assert len(result) == 2
+    assert result[0]["index"] == 0
+    assert result[0]["text"] == "fixed"
+    assert result[0]["reason"] == "typo"
+    assert result[1]["reason"] == ""
+
+
+def test_extract_corrections_empty():
+    data = {"corrections": []}
+    result = _extract_corrections(data)
+    assert result == []
+
+
+def test_extract_corrections_from_list():
+    data = [{"index": 0, "text": "fixed", "reason": "err"}]
+    result = _extract_corrections(data)
+    assert len(result) == 1
+
+
+def test_extract_corrections_skips_invalid():
+    data = {"corrections": [
+        {"index": 0, "text": "valid"},
+        {"index": 1},  # missing text
+        "not a dict",
+    ]}
+    result = _extract_corrections(data)
+    assert len(result) == 1
+
+
+def test_extract_corrections_unexpected_type():
+    import pytest
+
+    with pytest.raises(RuntimeError, match="Unexpected verify response type"):
+        _extract_corrections("not valid")

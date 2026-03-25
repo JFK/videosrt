@@ -1,4 +1,4 @@
-from src.services.srt import generate_srt, seconds_to_srt_time
+from src.services.srt import generate_srt, parse_srt, seconds_to_srt_time, srt_time_to_seconds
 
 
 def test_seconds_to_srt_time_zero():
@@ -46,3 +46,49 @@ def test_generate_srt_no_newlines_in_text():
     text_line = result.strip().split("\n")[2]
     assert "\n" not in text_line
     assert text_line == "This is a long sentence that should remain on one line without wrapping"
+
+
+# --- parse_srt tests ---
+
+
+def test_srt_time_to_seconds():
+    assert srt_time_to_seconds("00:00:00,000") == 0.0
+    assert srt_time_to_seconds("00:00:01,500") == 1.5
+    assert srt_time_to_seconds("01:01:01,999") == 3661.999
+
+
+def test_srt_time_to_seconds_dot_separator():
+    assert srt_time_to_seconds("00:00:01.500") == 1.5
+
+
+def test_parse_srt_roundtrip():
+    """generate_srt -> parse_srt should round-trip."""
+    segments = [
+        {"start": 0.0, "end": 2.5, "text": "Hello"},
+        {"start": 3.0, "end": 5.8, "text": "World"},
+    ]
+    srt = generate_srt(segments)
+    parsed = parse_srt(srt)
+    assert len(parsed) == 2
+    assert parsed[0]["text"] == "Hello"
+    assert parsed[0]["start"] == 0.0
+    assert parsed[0]["end"] == 2.5
+    assert parsed[1]["text"] == "World"
+
+
+def test_parse_srt_empty():
+    assert parse_srt("") == []
+    assert parse_srt("   ") == []
+
+
+def test_parse_srt_skips_malformed():
+    srt = "1\nnot a timestamp\nHello\n"
+    result = parse_srt(srt)
+    assert result == []
+
+
+def test_parse_srt_multiline_text():
+    srt = "1\n00:00:00,000 --> 00:00:02,000\nLine one\nLine two\n"
+    result = parse_srt(srt)
+    assert len(result) == 1
+    assert result[0]["text"] == "Line one\nLine two"

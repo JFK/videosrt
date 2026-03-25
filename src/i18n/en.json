@@ -37,7 +37,9 @@
     "upload_another": "Upload Another",
     "remove": "Remove",
     "elapsed": "Elapsed:",
-    "upload_failed": "Upload failed:"
+    "upload_failed": "Upload failed:",
+    "enable_verify": "Verify pass (re-check proper nouns & place names)",
+    "enable_verify_desc": "Re-read full transcript after refine to catch inconsistencies in names, kanji, and places"
   },
   "history": {
     "title": "Job History",
@@ -54,6 +56,7 @@
     "meta": "Meta",
     "thumb": "Thumb",
     "quiz": "Quiz",
+    "srt_editor": "Edit",
     "del": "Del",
     "delete_confirm": "Delete this job?",
     "no_jobs": "No jobs yet. Upload a media file to get started.",
@@ -179,11 +182,26 @@
     "generation_failed": "Generation failed:",
     "optimization_failed": "Optimization failed:"
   },
+  "srt_editor": {
+    "title": "SRT Editor",
+    "download": "Download",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved successfully",
+    "loading": "Loading...",
+    "verified_badge": "Verified",
+    "reason": "Reason",
+    "suggestion": "AI Suggestion",
+    "accept": "Accept",
+    "dismiss": "Dismiss",
+    "back_to_history": "Back to History"
+  },
   "status": {
     "pending": "Pending",
     "extracting": "Extracting audio",
     "transcribing": "Transcribing",
     "refining": "Refining",
+    "verifying": "Verifying",
     "generating_metadata": "Generating metadata",
     "completed": "Completed",
     "failed": "Failed"

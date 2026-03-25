@@ -39,6 +39,16 @@ async def meta_editor_page(job_id: str, request: Request, session: AsyncSession 
     return templates.TemplateResponse(request, "meta_editor.html", ctx)
 
 
+@router.get("/srt/{job_id}")
+async def srt_editor_page(job_id: str, request: Request, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(Job).where(Job.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        return RedirectResponse("/history")
+    ctx = {"active_page": "history", "job": job, **_i18n_context(request)}
+    return templates.TemplateResponse(request, "srt_editor.html", ctx)
+
+
 @router.get("/costs")
 async def costs_page(request: Request):
     return templates.TemplateResponse(request, "costs.html", {"active_page": "costs", **_i18n_context(request)})

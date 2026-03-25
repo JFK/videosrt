@@ -88,6 +88,20 @@ async def process_transcription(job: Job, session: AsyncSession) -> None:
                 logger.warning("Refinement failed for job %s: %s", job.id, e)
                 job.error_message = f"Refinement failed, using raw transcription: {str(e)[:300]}"
 
+        # Step 3.5: Verify (full-text consistency check) if enabled
+        if job.enable_verify:
+            job.status = "verifying"
+            await session.commit()
+            try:
+                segments, changed_indices, reasons = await _run_verification(
+                    job, session, segments, api_key, combined_glossary,
+                )
+                job.verified_indices = json.dumps(changed_indices)
+                job.verify_reasons = json.dumps(reasons, ensure_ascii=False)
+            except Exception as e:
+                logger.warning("Verification failed for job %s: %s", job.id, e)
+                job.error_message = f"Verification failed, using refined transcription: {str(e)[:300]}"
+
         # Step 4: Generate and save SRT
         srt_content = generate_srt(segments)
         srt_path = settings.srt_dir / f"{job.id}.srt"
@@ -260,3 +274,32 @@ async def _run_refinement(
     )
 
     return refined
+
+
+async def _run_verification(
+    job: Job, session: AsyncSession, segments: list[dict], api_key: str,
+    glossary: str = "",
+) -> tuple[list[dict], list[int], dict[int, str]]:
+    """Verify segments using full-text review and log cost."""
+    from src.services.refine import verify_segments
+
+    provider_name = get_provider_name(job.provider)
+
+    # Use same model as refine
+    refine_key = f"general.refine_model_{provider_name}"
+    result = await session.execute(select(Setting).where(Setting.key == refine_key))
+    setting = result.scalar_one_or_none()
+    default_model = "gpt-5.4-nano" if provider_name == "openai" else "gemini-2.5-flash-lite"
+    verify_model = setting.value if setting else default_model
+
+    verified, changed_indices, reasons, input_tokens, output_tokens = await verify_segments(
+        segments, api_key, provider_name, verify_model, glossary,
+    )
+
+    cost = estimate_llm_cost(input_tokens, output_tokens, verify_model, provider_name)
+    await log_cost(
+        session, job.id, provider_name, verify_model, "verification", cost,
+        input_tokens=input_tokens, output_tokens=output_tokens,
+    )
+
+    return verified, changed_indices, reasons

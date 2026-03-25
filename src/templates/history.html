@@ -36,8 +36,8 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     {% if job.srt_path %}
-                    <a href="/api/jobs/{{ job.id }}/download"
-                       class="text-blue-600 hover:text-blue-800 font-medium">SRT</a>
+                    <a href="/srt/{{ job.id }}"
+                       class="text-blue-600 hover:text-blue-800 font-medium">{{ t('history.srt_editor') }}</a>
                     {% endif %}
 
                     {% if job.srt_path and job.status in ('completed', 'failed') %}

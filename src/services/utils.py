@@ -22,7 +22,7 @@ def _repair_truncated_json(text: str) -> dict | list:
     while last_complete > 0:
         candidate = text[:last_complete + 1].rstrip().rstrip(",")
         # Try closing as array
-        for suffix in ["]", "]}"):
+        for suffix in ["]", "]}"]:
             attempt = candidate + suffix
             try:
                 result = json.loads(attempt)
