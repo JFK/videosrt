@@ -24,6 +24,17 @@ AI-powered SRT subtitle generator with YouTube metadata, catchphrase, and quiz g
 - **Cost Dashboard**: Track API costs by provider, model, month, and operation
 - **Settings**: API keys (encrypted), model presets, glossary, refine prompts, pricing
 
+## Screenshots
+
+### Upload
+![Upload](docs/screenshots/upload.png)
+
+### Cost Dashboard
+![Cost Dashboard](docs/screenshots/costs.png)
+
+### Settings
+![Settings](docs/screenshots/settings.png)
+
 ## Quick Start
 
 ### Docker (Recommended)
