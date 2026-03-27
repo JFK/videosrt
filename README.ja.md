@@ -1,5 +1,9 @@
 # VoiceSRT
 
+[![CI](https://github.com/JFK/voicesrt/actions/workflows/ci.yml/badge.svg)](https://github.com/JFK/voicesrt/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 [English](README.md)
 
 動画・音声ファイルからAI文字起こしでSRT字幕を生成し、YouTubeメタデータ・キャッチコピー・クイズも一括作成するWebアプリケーション。
