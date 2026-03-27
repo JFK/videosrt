@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-27
+
+### Added
+- VTT (WebVTT) export support: download as .vtt from history and SRT editor
+- GitHub Actions CI pipeline (lint, format check, test with coverage)
+- 63 new tests (82 → 145 total, coverage 43% → 57%)
+- pytest-cov dependency for coverage reporting
+
+### Changed
+- CI badges added to README.md and README.ja.md (CI status, Python, License)
+
+### Fixed
+- CI: create data directories and run Alembic migrations before tests
+- Ruff format applied to all source files for consistency
+
 ## [0.1.0] - 2026-03-27
 
 Initial release.
