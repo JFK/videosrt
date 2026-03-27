@@ -13,8 +13,12 @@
                 <span x-show="saveMsg && !saveError" x-transition class="text-xs text-green-600" x-text="saveMsg"></span>
                 <span x-show="saveMsg && saveError" x-transition class="text-xs text-red-600" x-text="saveMsg"></span>
                 <a href="/api/jobs/{{ job.id }}/download"
-                   class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 border border-gray-300">
-                    {{ t('srt_editor.download') }}
+                   class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 border border-gray-300">
+                    SRT
+                </a>
+                <a href="/api/jobs/{{ job.id }}/download-vtt"
+                   class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 border border-gray-300">
+                    VTT
                 </a>
             </div>
         </div>

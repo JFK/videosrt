@@ -215,6 +215,27 @@ async def download_srt(job_id: str, session: AsyncSession = Depends(get_session)
     return FileResponse(srt_file, filename=download_name, media_type="text/plain")
 
 
+@router.get("/{job_id}/download-vtt")
+async def download_vtt(job_id: str, session: AsyncSession = Depends(get_session)):
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=404, detail="SRT file not found")
+
+    srt_file = Path(job.srt_path).resolve()
+    if not srt_file.exists():
+        raise HTTPException(status_code=404, detail="SRT file not found on disk")
+
+    from src.services.srt import srt_to_vtt
+
+    srt_content = srt_file.read_text(encoding="utf-8")
+    vtt_content = srt_to_vtt(srt_content)
+    download_name = Path(_safe_filename(job.filename)).stem + ".vtt"
+
+    from fastapi.responses import Response
+
+    return Response(content=vtt_content, media_type="text/vtt", headers={"Content-Disposition": f'attachment; filename="{download_name}"'})
+
+
 @router.post("/{job_id}/generate-meta")
 async def generate_meta(
     job_id: str,

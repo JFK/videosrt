@@ -75,6 +75,40 @@ def parse_srt(content: str) -> list[dict]:
     return segments
 
 
+def seconds_to_vtt_time(seconds: float) -> str:
+    """Convert seconds to VTT timestamp format: HH:MM:SS.mmm"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millis = round((seconds % 1) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
+
+
+def generate_vtt(segments: list[dict]) -> str:
+    """Generate WebVTT content from segments.
+
+    Each segment: {"start": float, "end": float, "text": str}
+    """
+    lines = ["WEBVTT", ""]
+    for seg in segments:
+        text = seg["text"].strip()
+        if not text:
+            continue
+        start = seconds_to_vtt_time(seg["start"])
+        end = seconds_to_vtt_time(seg["end"])
+        lines.append(f"{start} --> {end}")
+        lines.append(text)
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def srt_to_vtt(srt_content: str) -> str:
+    """Convert SRT content to WebVTT format."""
+    segments = parse_srt(srt_content)
+    return generate_vtt(segments)
+
+
 def save_srt(content: str, output_path: Path) -> None:
     """Save SRT content to file."""
     output_path.parent.mkdir(parents=True, exist_ok=True)

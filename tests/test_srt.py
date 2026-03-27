@@ -1,4 +1,12 @@
-from src.services.srt import generate_srt, parse_srt, seconds_to_srt_time, srt_time_to_seconds
+from src.services.srt import (
+    generate_srt,
+    generate_vtt,
+    parse_srt,
+    seconds_to_srt_time,
+    seconds_to_vtt_time,
+    srt_time_to_seconds,
+    srt_to_vtt,
+)
 
 
 def test_seconds_to_srt_time_zero():
@@ -92,3 +100,43 @@ def test_parse_srt_multiline_text():
     result = parse_srt(srt)
     assert len(result) == 1
     assert result[0]["text"] == "Line one\nLine two"
+
+
+# --- VTT tests ---
+
+
+def test_seconds_to_vtt_time():
+    assert seconds_to_vtt_time(0.0) == "00:00:00.000"
+    assert seconds_to_vtt_time(1.5) == "00:00:01.500"
+    assert seconds_to_vtt_time(3661.999) == "01:01:01.999"
+
+
+def test_generate_vtt():
+    segments = [
+        {"start": 0.0, "end": 2.5, "text": "Hello"},
+        {"start": 3.0, "end": 5.8, "text": "World"},
+    ]
+    result = generate_vtt(segments)
+    assert result.startswith("WEBVTT\n")
+    assert "00:00:00.000 --> 00:00:02.500" in result
+    assert "00:00:03.000 --> 00:00:05.800" in result
+    assert "Hello" in result
+    assert "World" in result
+
+
+def test_generate_vtt_skips_empty():
+    segments = [
+        {"start": 0.0, "end": 1.0, "text": "Hello"},
+        {"start": 1.0, "end": 2.0, "text": "  "},
+    ]
+    result = generate_vtt(segments)
+    assert "Hello" in result
+    assert result.count("-->") == 1
+
+
+def test_srt_to_vtt():
+    srt = "1\n00:00:00,000 --> 00:00:02,500\nHello\n\n2\n00:00:03,000 --> 00:00:05,800\nWorld\n"
+    result = srt_to_vtt(srt)
+    assert result.startswith("WEBVTT\n")
+    assert "00:00:00.000 --> 00:00:02.500" in result
+    assert "," not in result.split("\n", 1)[1]  # No commas in timestamps
