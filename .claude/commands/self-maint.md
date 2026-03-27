@@ -1,6 +1,6 @@
 ---
 description: Audit and maintain .claude/ configuration
-             (commands, agents, rules, hooks, settings)
+             (commands, rules, hooks, settings)
 ---
 
 Perform a full audit of the `.claude/` directory against
@@ -19,20 +19,16 @@ which fixes to apply.
 - Check MCP tools and parameters match current API
 - Verify file paths and tool references are valid
 
-### 3. Agents Audit (.claude/agents/)
-- Verify file paths, test patterns, tech stack descriptions
-- Check consistency with current project structure
-
-### 4. Hooks Audit (settings.json)
+### 3. Hooks Audit (settings.json)
 - Verify hook scripts exist and are executable
 - Check file pattern matchers cover current file types
 - Check secret detection patterns are comprehensive
 
-### 5. Permissions Audit (settings.json)
+### 4. Permissions Audit (settings.json)
 - Check if allowed commands reference installed tools
 - Check if needed commands are missing from allowlist
 
-### 6. CLAUDE.md Consistency Check
+### 5. CLAUDE.md Consistency Check
 - Verify CLAUDE.md references match .claude/ contents
 - Flag drift between documentation and configuration
 

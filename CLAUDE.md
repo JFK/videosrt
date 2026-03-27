@@ -102,6 +102,12 @@ src/
 - **Async**: Use async/await (SQLAlchemy async, asyncio subprocess)
 - **Tests**: pytest + pytest-asyncio
 - **Language**: Code and comments in English
+- **Logging**: `logger = logging.getLogger(__name__)` per module
+- **Timestamps**: `datetime.now(UTC)` — always UTC, never naive datetime
+- **Paths**: `pathlib.Path` over string paths, `.glob()` for file discovery
+- **Error handling**: Graceful degradation — non-fatal pipeline steps catch exceptions and continue
+- **Temp files**: Always clean up in `finally` blocks
+- **LLM responses**: Use `_repair_truncated_json()` (utils.py) for robustness
 
 ## Commit Messages
 
@@ -110,7 +116,7 @@ Conventional Commits format:
 ```
 <type>(<scope>): <subject>
 
-Co-Authored-By: Claude <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ```
 
 Type: feat, fix, refactor, test, docs, chore
