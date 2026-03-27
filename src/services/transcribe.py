@@ -94,7 +94,11 @@ async def process_transcription(job: Job, session: AsyncSession) -> None:
             await session.commit()
             try:
                 segments, changed_indices, reasons = await _run_verification(
-                    job, session, segments, api_key, combined_glossary,
+                    job,
+                    session,
+                    segments,
+                    api_key,
+                    combined_glossary,
                 )
                 job.verified_indices = json.dumps(changed_indices)
                 job.verify_reasons = json.dumps(reasons, ensure_ascii=False)
@@ -138,7 +142,11 @@ def _cleanup_temp_files(job_id: str, audio_path: Path | None) -> None:
 
 
 async def _run_transcription(
-    job: Job, session: AsyncSession, audio_path: Path, api_key: str, duration: float,
+    job: Job,
+    session: AsyncSession,
+    audio_path: Path,
+    api_key: str,
+    duration: float,
     glossary: str = "",
 ) -> list[dict]:
     """Run transcription with the configured provider and log cost."""
@@ -156,8 +164,15 @@ async def _run_transcription(
         )
         cost = estimate_gemini_cost(duration, output_tokens, model)
         await log_cost(
-            session, job.id, "gemini", model, "transcription", cost,
-            audio_duration=duration, input_tokens=input_tokens, output_tokens=output_tokens,
+            session,
+            job.id,
+            "gemini",
+            model,
+            "transcription",
+            cost,
+            audio_duration=duration,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     return segments
@@ -198,19 +213,24 @@ async def _transcribe_whisper(
         segments = await transcribe_with_whisper(chunk_path, api_key, language, prompt)
         # Apply offset without mutating original segments
         for seg in segments:
-            all_segments.append({
-                "start": seg["start"] + offset,
-                "end": seg["end"] + offset,
-                "text": seg["text"],
-            })
+            all_segments.append(
+                {
+                    "start": seg["start"] + offset,
+                    "end": seg["end"] + offset,
+                    "text": seg["text"],
+                }
+            )
         offset += chunk_duration
 
     return all_segments
 
 
 async def _transcribe_gemini(
-    audio_path: Path, api_key: str, language: str | None,
-    model: str = "gemini-2.5-flash", glossary: str = "",
+    audio_path: Path,
+    api_key: str,
+    language: str | None,
+    model: str = "gemini-2.5-flash",
+    glossary: str = "",
 ) -> tuple[list[dict], int, int]:
     """Transcribe with Gemini, handling chunking for large files."""
     from src.services.gemini import transcribe_with_gemini
@@ -230,11 +250,13 @@ async def _transcribe_gemini(
             chunk_path, api_key, language, model, glossary
         )
         for seg in segments:
-            all_segments.append({
-                "start": seg["start"] + offset,
-                "end": seg["end"] + offset,
-                "text": seg["text"],
-            })
+            all_segments.append(
+                {
+                    "start": seg["start"] + offset,
+                    "end": seg["end"] + offset,
+                    "text": seg["text"],
+                }
+            )
         total_input_tokens += input_tokens
         total_output_tokens += output_tokens
         offset += chunk_duration
@@ -243,7 +265,10 @@ async def _transcribe_gemini(
 
 
 async def _run_metadata_generation(
-    job: Job, session: AsyncSession, srt_content: str, api_key: str,
+    job: Job,
+    session: AsyncSession,
+    srt_content: str,
+    api_key: str,
     custom_prompt: str | None = None,
     tone_references: str | None = None,
 ) -> None:
@@ -263,13 +288,22 @@ async def _run_metadata_generation(
     provider_name = get_provider_name(job.provider)
     cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
     await log_cost(
-        session, job.id, provider_name, model, "metadata_generation", cost,
-        input_tokens=input_tokens, output_tokens=output_tokens,
+        session,
+        job.id,
+        provider_name,
+        model,
+        "metadata_generation",
+        cost,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
 
 
 async def _run_refinement(
-    job: Job, session: AsyncSession, segments: list[dict], api_key: str,
+    job: Job,
+    session: AsyncSession,
+    segments: list[dict],
+    api_key: str,
     glossary: str = "",
 ) -> list[dict]:
     """Refine segments using LLM post-processing and log cost."""
@@ -296,21 +330,35 @@ async def _run_refinement(
             custom_prompts[mode] = setting.value
 
     refined, input_tokens, output_tokens = await refine_with_llm(
-        segments, api_key, provider_name, refine_model, glossary, refine_mode,
+        segments,
+        api_key,
+        provider_name,
+        refine_model,
+        glossary,
+        refine_mode,
         custom_prompts=custom_prompts or None,
     )
 
     cost = estimate_llm_cost(input_tokens, output_tokens, refine_model, provider_name)
     await log_cost(
-        session, job.id, provider_name, refine_model, "refinement", cost,
-        input_tokens=input_tokens, output_tokens=output_tokens,
+        session,
+        job.id,
+        provider_name,
+        refine_model,
+        "refinement",
+        cost,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
 
     return refined
 
 
 async def _run_verification(
-    job: Job, session: AsyncSession, segments: list[dict], api_key: str,
+    job: Job,
+    session: AsyncSession,
+    segments: list[dict],
+    api_key: str,
     glossary: str = "",
 ) -> tuple[list[dict], list[int], dict[int, str]]:
     """Verify segments using full-text review and log cost."""
@@ -326,13 +374,23 @@ async def _run_verification(
     verify_model = setting.value if setting else default_model
 
     verified, changed_indices, reasons, input_tokens, output_tokens = await verify_segments(
-        segments, api_key, provider_name, verify_model, glossary,
+        segments,
+        api_key,
+        provider_name,
+        verify_model,
+        glossary,
     )
 
     cost = estimate_llm_cost(input_tokens, output_tokens, verify_model, provider_name)
     await log_cost(
-        session, job.id, provider_name, verify_model, "verification", cost,
-        input_tokens=input_tokens, output_tokens=output_tokens,
+        session,
+        job.id,
+        provider_name,
+        verify_model,
+        "verification",
+        cost,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
 
     return verified, changed_indices, reasons

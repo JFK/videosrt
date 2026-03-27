@@ -103,7 +103,10 @@ async def test_refine_custom_prompt_overrides_default():
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
 
         await refine_with_llm(
-            MOCK_SEGMENTS, "fake-key", "openai", "gpt-test",
+            MOCK_SEGMENTS,
+            "fake-key",
+            "openai",
+            "gpt-test",
             refine_mode="standard",
             custom_prompts={"standard": custom},
         )
@@ -123,7 +126,10 @@ async def test_refine_custom_prompt_fallback():
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
 
         await refine_with_llm(
-            MOCK_SEGMENTS, "fake-key", "openai", "gpt-test",
+            MOCK_SEGMENTS,
+            "fake-key",
+            "openai",
+            "gpt-test",
             refine_mode="standard",
             custom_prompts={"caption": "custom caption {glossary_section}\n{segments_json}"},
         )
@@ -144,7 +150,10 @@ async def test_refine_glossary_in_prompt():
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
 
         await refine_with_llm(
-            MOCK_SEGMENTS, "fake-key", "openai", "gpt-test",
+            MOCK_SEGMENTS,
+            "fake-key",
+            "openai",
+            "gpt-test",
             glossary="VoiceSRT:ボイスSRT\nKubernetes:クバネティス",
         )
 
@@ -185,7 +194,10 @@ async def test_whisper_receives_glossary_prompt():
         mock_client.audio.transcriptions.create = AsyncMock(return_value=mock_response)
 
         await transcribe_with_whisper(
-            audio_path=MagicMock(), api_key="fake-key", language="ja", prompt="漢字、かんじ",
+            audio_path=MagicMock(),
+            api_key="fake-key",
+            language="ja",
+            prompt="漢字、かんじ",
         )
 
     assert mock_client.audio.transcriptions.create.call_args.kwargs["prompt"] == "漢字、かんじ"

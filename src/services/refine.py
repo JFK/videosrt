@@ -111,11 +111,13 @@ def _extract_segments(result: object) -> list[dict]:
     validated = []
     for seg in segments:
         if isinstance(seg, dict) and "start" in seg and "end" in seg and "text" in seg:
-            validated.append({
-                "start": float(seg["start"]),
-                "end": float(seg["end"]),
-                "text": str(seg["text"]).strip(),
-            })
+            validated.append(
+                {
+                    "start": float(seg["start"]),
+                    "end": float(seg["end"]),
+                    "text": str(seg["text"]).strip(),
+                }
+            )
         else:
             logger.warning("Skipping invalid segment: %s", repr(seg)[:100])
 
@@ -253,11 +255,13 @@ def _extract_corrections(result: object) -> list[dict]:
     validated = []
     for c in corrections:
         if isinstance(c, dict) and "index" in c and "text" in c:
-            validated.append({
-                "index": int(c["index"]),
-                "text": str(c["text"]).strip(),
-                "reason": str(c.get("reason", "")),
-            })
+            validated.append(
+                {
+                    "index": int(c["index"]),
+                    "text": str(c["text"]).strip(),
+                    "reason": str(c.get("reason", "")),
+                }
+            )
         else:
             logger.warning("Skipping invalid correction: %s", repr(c)[:100])
     return validated

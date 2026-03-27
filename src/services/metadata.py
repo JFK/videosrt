@@ -45,7 +45,6 @@ Transcription:
 {srt_content}"""
 
 
-
 async def generate_youtube_metadata(
     srt_content: str,
     api_key: str,
@@ -116,10 +115,7 @@ async def optimize_meta_prompt(
     """Use LLM to optimize the metadata generation prompt."""
     tone_ref_section = ""
     if tone_references:
-        tone_ref_section = (
-            "\nPrevious video metadata (for tone reference):\n"
-            f"{tone_references}\n"
-        )
+        tone_ref_section = f"\nPrevious video metadata (for tone reference):\n{tone_references}\n"
 
     prompt = OPTIMIZE_PROMPT.format(
         channel_name=context.get("channelName", ""),
@@ -133,6 +129,7 @@ async def optimize_meta_prompt(
 
     if provider == "openai":
         import openai
+
         client = openai.AsyncOpenAI(api_key=api_key)
         response = await client.chat.completions.create(
             model=model,
@@ -144,6 +141,7 @@ async def optimize_meta_prompt(
         import asyncio
 
         from google import genai
+
         client = genai.Client(api_key=api_key)
         response = await asyncio.to_thread(
             client.models.generate_content,
@@ -207,7 +205,7 @@ def _build_description(metadata: dict) -> dict:
     if any(ch.get("time", "") in description for ch in chapters[:2]):
         return metadata
 
-    chapter_lines = "\n".join(f'{ch["time"]} {ch["title"]}' for ch in chapters)
+    chapter_lines = "\n".join(f"{ch['time']} {ch['title']}" for ch in chapters)
     if chapter_lines:
         description = description.rstrip() + "\n\n" + chapter_lines
 

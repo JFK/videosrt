@@ -129,10 +129,12 @@ def test_build_full_text():
 
 
 def test_extract_corrections_from_dict():
-    data = {"corrections": [
-        {"index": 0, "text": "fixed", "reason": "typo"},
-        {"index": 2, "text": "also fixed"},
-    ]}
+    data = {
+        "corrections": [
+            {"index": 0, "text": "fixed", "reason": "typo"},
+            {"index": 2, "text": "also fixed"},
+        ]
+    }
     result = _extract_corrections(data)
     assert len(result) == 2
     assert result[0]["index"] == 0
@@ -154,11 +156,13 @@ def test_extract_corrections_from_list():
 
 
 def test_extract_corrections_skips_invalid():
-    data = {"corrections": [
-        {"index": 0, "text": "valid"},
-        {"index": 1},  # missing text
-        "not a dict",
-    ]}
+    data = {
+        "corrections": [
+            {"index": 0, "text": "valid"},
+            {"index": 1},  # missing text
+            "not a dict",
+        ]
+    }
     result = _extract_corrections(data)
     assert len(result) == 1
 

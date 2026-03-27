@@ -20,7 +20,7 @@ def _repair_truncated_json(text: str) -> dict | list:
     """Repair truncated JSON by finding the last complete object and closing brackets."""
     last_complete = text.rfind("}")
     while last_complete > 0:
-        candidate = text[:last_complete + 1].rstrip().rstrip(",")
+        candidate = text[: last_complete + 1].rstrip().rstrip(",")
 
         # Count unmatched brackets to build the right closing suffix
         open_brackets: list[str] = []
@@ -83,7 +83,8 @@ def parse_json_response(text: str, context: str = "") -> dict | list:
         result = _repair_truncated_json(cleaned)
         logger.warning(
             "Repaired truncated JSON in %s — recovered %d segments (last segment may be lost)",
-            context, len(result),
+            context,
+            len(result),
         )
         return result
     except json.JSONDecodeError as e:

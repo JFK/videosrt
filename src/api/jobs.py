@@ -35,6 +35,7 @@ async def _get_max_upload_size(session: AsyncSession) -> int:
             pass
     return DEFAULT_MAX_UPLOAD_SIZE
 
+
 # Sanitize filenames to prevent path traversal
 _SAFE_FILENAME_RE = re.compile(r"[^\w\s\-.]", re.UNICODE)
 
@@ -68,7 +69,6 @@ async def _process_job(job_id: str) -> None:
             job.status = STATUS_FAILED
             job.error_message = str(e)[:500]
             await session.commit()
-
 
 
 VALID_REFINE_MODES = {"verbatim", "standard", "caption"}
@@ -178,7 +178,6 @@ async def get_job(job_id: str, session: AsyncSession = Depends(get_session)):
         "language": job.language,
         "audio_duration": job.audio_duration,
         "srt_path": job.srt_path,
-
         "youtube_title": job.youtube_title,
         "youtube_description": job.youtube_description,
         "youtube_tags": job.youtube_tags,
@@ -195,6 +194,7 @@ async def get_job_status(job_id: str, request: Request, session: AsyncSession = 
 
     if request.headers.get("HX-Request"):
         from src.templating import get_lang, get_translator
+
         t = get_translator(get_lang(request))
         return templates.TemplateResponse(request, "partials/job_status.html", {"job": job, "t": t})
 
@@ -213,7 +213,6 @@ async def download_srt(job_id: str, session: AsyncSession = Depends(get_session)
 
     download_name = Path(_safe_filename(job.filename)).stem + ".srt"
     return FileResponse(srt_file, filename=download_name, media_type="text/plain")
-
 
 
 @router.post("/{job_id}/generate-meta")
@@ -278,7 +277,9 @@ async def optimize_prompt(
     model = await _get_model(session, job.provider)
 
     optimized = await optimize_meta_prompt(
-        current_prompt, context, api_key,
+        current_prompt,
+        context,
+        api_key,
         get_provider_name(job.provider),
         model,
         tone_references,
@@ -287,7 +288,9 @@ async def optimize_prompt(
 
 
 async def _generate_meta_job(
-    job_id: str, custom_prompt: str | None = None, fixed_footer: str = "",
+    job_id: str,
+    custom_prompt: str | None = None,
+    fixed_footer: str = "",
     tone_references: str | None = None,
 ) -> None:
     """Background task: generate YouTube metadata from existing SRT."""
@@ -349,9 +352,7 @@ async def generate_catchphrase_endpoint(
         model = await _get_model(session, job.provider)
         provider_name = get_provider_name(job.provider)
 
-        phrases, input_tokens, output_tokens = await generate_catchphrases(
-            srt_content, api_key, provider_name, model
-        )
+        phrases, input_tokens, output_tokens = await generate_catchphrases(srt_content, api_key, provider_name, model)
 
         # Save to DB
         job.catchphrases = json_mod.dumps(phrases, ensure_ascii=False)
@@ -359,8 +360,14 @@ async def generate_catchphrase_endpoint(
 
         cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
         await log_cost(
-            session, job.id, provider_name, model, "catchphrase_generation", cost,
-            input_tokens=input_tokens, output_tokens=output_tokens,
+            session,
+            job.id,
+            provider_name,
+            model,
+            "catchphrase_generation",
+            cost,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
         return {"catchphrases": phrases}
@@ -396,9 +403,7 @@ async def generate_quiz_endpoint(
         model = await _get_model(session, job.provider)
         provider_name = get_provider_name(job.provider)
 
-        quiz, input_tokens, output_tokens = await generate_quiz(
-            srt_content, api_key, provider_name, model
-        )
+        quiz, input_tokens, output_tokens = await generate_quiz(srt_content, api_key, provider_name, model)
 
         # Save to DB
         job.quiz = json_mod.dumps(quiz, ensure_ascii=False)
@@ -406,8 +411,14 @@ async def generate_quiz_endpoint(
 
         cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
         await log_cost(
-            session, job.id, provider_name, model, "quiz_generation", cost,
-            input_tokens=input_tokens, output_tokens=output_tokens,
+            session,
+            job.id,
+            provider_name,
+            model,
+            "quiz_generation",
+            cost,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
         return {"quiz": quiz}
@@ -510,18 +521,29 @@ async def suggest_segment_endpoint(
     combined_glossary = "\n".join(filter(None, [global_glossary.strip(), job_glossary.strip()]))
 
     # Context: 5 segments before/after
-    ctx_before = segments[max(0, index - 5):index]
-    ctx_after = segments[index + 1:index + 6]
+    ctx_before = segments[max(0, index - 5) : index]
+    ctx_after = segments[index + 1 : index + 6]
 
     suggested, reason, input_tokens, output_tokens = await suggest_segment(
-        segments[index], ctx_before, ctx_after,
-        api_key, provider_name, model, combined_glossary,
+        segments[index],
+        ctx_before,
+        ctx_after,
+        api_key,
+        provider_name,
+        model,
+        combined_glossary,
     )
 
     cost = estimate_llm_cost(input_tokens, output_tokens, model, provider_name)
     await log_cost(
-        session, job.id, provider_name, model, "suggestion", cost,
-        input_tokens=input_tokens, output_tokens=output_tokens,
+        session,
+        job.id,
+        provider_name,
+        model,
+        "suggestion",
+        cost,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
 
     return {"text": suggested, "reason": reason}

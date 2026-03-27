@@ -69,7 +69,7 @@ def parse_srt(content: str) -> list[dict]:
             end = srt_time_to_seconds(ts_parts[1])
         except ValueError:
             continue
-        text = "\n".join(lines[ts_idx + 1:]).strip()
+        text = "\n".join(lines[ts_idx + 1 :]).strip()
         if text:
             segments.append({"start": start, "end": end, "text": text})
     return segments

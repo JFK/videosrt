@@ -202,7 +202,6 @@ async def set_general_setting(key: str, body: GeneralSettingInput, session: Asyn
     return {"key": key, "value": body.value}
 
 
-
 @router.get("/pricing")
 async def get_pricing(session: AsyncSession = Depends(get_session)):
     """Get all model pricing (defaults merged with custom)."""

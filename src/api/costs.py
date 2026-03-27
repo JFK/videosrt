@@ -31,7 +31,9 @@ async def get_costs(session: AsyncSession = Depends(get_session)):
         select(
             func.strftime("%Y-%m", CostLog.created_at).label("month"),
             func.sum(CostLog.estimated_cost),
-        ).group_by("month").order_by("month")
+        )
+        .group_by("month")
+        .order_by("month")
     )
     by_month = [{"month": row[0], "cost": row[1]} for row in month_result.all()]
 
