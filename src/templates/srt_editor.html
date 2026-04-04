@@ -84,26 +84,40 @@
                  :class="activeSegmentIdx === idx ? 'border-blue-500 bg-blue-50' : verifiedIndices.includes(idx) ? 'border-yellow-400 bg-yellow-50' : 'border-transparent'">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
+                        <input type="checkbox" :value="idx" x-model.number="selected"
+                               class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         <span class="text-xs font-mono text-gray-400" x-text="'#' + (idx + 1)"></span>
                         <button @click="playSegment(seg.start, seg.end)"
                                 class="text-gray-400 hover:text-blue-600 transition-colors p-0.5"
                                 :title="'Play ' + formatTime(seg.start)">
                             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         </button>
-                        <span class="text-xs text-gray-500" x-text="formatTime(seg.start) + ' → ' + formatTime(seg.end)"></span>
+                        <!-- Editable timestamps -->
+                        <input type="text" :value="formatTimeFull(seg.start)"
+                               @change="seg.start = parseTime($event.target.value); debounceSave()"
+                               class="w-24 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
+                        <span class="text-xs text-gray-400">→</span>
+                        <input type="text" :value="formatTimeFull(seg.end)"
+                               @change="seg.end = parseTime($event.target.value); debounceSave()"
+                               class="w-24 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
                         <span x-show="verifiedIndices.includes(idx)"
                               class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 cursor-help"
                               :title="verifyReasons[idx] || ''">
                             {{ t('srt_editor.verified_badge') }}
                         </span>
                     </div>
-                    <button @click="requestSuggestion(idx)" :disabled="suggesting[idx]"
-                            class="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
-                        <span x-show="!suggesting[idx]">✨ AI</span>
-                        <span x-show="suggesting[idx]" class="flex items-center gap-1">
-                            <span class="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full inline-block"></span>
-                        </span>
-                    </button>
+                    <div class="flex items-center gap-1">
+                        <button @click="requestSuggestion(idx)" :disabled="suggesting[idx]"
+                                class="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                            <span x-show="!suggesting[idx]">✨ AI</span>
+                            <span x-show="suggesting[idx]" class="flex items-center gap-1">
+                                <span class="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full inline-block"></span>
+                            </span>
+                        </button>
+                        <button @click="deleteSegment(idx)" class="text-gray-300 hover:text-red-500 transition-colors p-1" :title="'{{ t('srt_editor.delete_seg') }}'">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Editable text -->
@@ -136,8 +150,27 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Add segment button (between segments) -->
+                <div class="flex justify-center -mb-2 mt-2">
+                    <button @click="addSegmentAfter(idx)"
+                            class="text-gray-300 hover:text-blue-500 transition-colors text-xs flex items-center gap-1 opacity-0 hover:opacity-100 focus:opacity-100">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        {{ t('srt_editor.add_seg') }}
+                    </button>
+                </div>
             </div>
         </template>
+    </div>
+
+    <!-- Merge toolbar (shown when 2+ segments selected) -->
+    <div x-show="selected.length >= 2" x-transition
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-4">
+        <span class="text-sm" x-text="selected.length + ' {{ t('srt_editor.segments_selected') }}'"></span>
+        <button @click="mergeSelected()" class="text-sm px-3 py-1 bg-white text-blue-700 rounded font-medium hover:bg-blue-50">
+            {{ t('srt_editor.merge') }}
+        </button>
+        <button @click="selected = []" class="text-sm text-blue-200 hover:text-white">{{ t('srt_editor.cancel') }}</button>
     </div>
 
     <!-- Back link -->
@@ -164,6 +197,7 @@ function srtEditor() {
         currentTime: 0,
         audioDuration: 0,
         activeSegmentIdx: null,
+        selected: [],
         _saveTimer: null,
         _stopTimer: null,
 
@@ -345,6 +379,61 @@ function srtEditor() {
                 audio.pause();
                 this._stopTimer = null;
             }, duration);
+        },
+
+        deleteSegment(idx) {
+            if (!confirm('{{ t("srt_editor.delete_confirm") }}')) return;
+            this.segments.splice(idx, 1);
+            this.selected = this.selected.filter(i => i !== idx).map(i => i > idx ? i - 1 : i);
+            this.debounceSave();
+        },
+
+        addSegmentAfter(idx) {
+            const prev = this.segments[idx];
+            const next = this.segments[idx + 1];
+            const start = prev.end;
+            const end = next ? next.start : prev.end + 2.0;
+            this.segments.splice(idx + 1, 0, { start, end, text: '' });
+            this.debounceSave();
+        },
+
+        mergeSelected() {
+            if (this.selected.length < 2) return;
+            const sorted = [...this.selected].sort((a, b) => a - b);
+            // Check consecutive
+            for (let i = 1; i < sorted.length; i++) {
+                if (sorted[i] !== sorted[i-1] + 1) {
+                    alert('{{ t("srt_editor.merge_consecutive_only") }}');
+                    return;
+                }
+            }
+            const first = sorted[0];
+            const last = sorted[sorted.length - 1];
+            const merged = {
+                start: this.segments[first].start,
+                end: this.segments[last].end,
+                text: sorted.map(i => this.segments[i].text).join(' '),
+            };
+            this.segments.splice(first, sorted.length, merged);
+            this.selected = [];
+            this.debounceSave();
+        },
+
+        formatTimeFull(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toFixed(1).padStart(4, '0')}`;
+        },
+
+        parseTime(str) {
+            const parts = str.split(':');
+            if (parts.length === 3) {
+                return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+            } else if (parts.length === 2) {
+                return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+            }
+            return parseFloat(str) || 0;
         },
 
         autoResize(el) {

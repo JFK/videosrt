@@ -216,7 +216,14 @@
     "refining": "リファイン中...",
     "re_refine_done": "再リファインが完了しました",
     "glossary_label": "用語集（再リファイン用）",
-    "glossary_hint": "1行に1つ。固有名詞や専門用語の修正に使用されます。"
+    "glossary_hint": "1行に1つ。固有名詞や専門用語の修正に使用されます。",
+    "delete_seg": "セグメントを削除",
+    "delete_confirm": "このセグメントを削除しますか？",
+    "add_seg": "追加",
+    "segments_selected": "件選択中",
+    "merge": "統合",
+    "cancel": "キャンセル",
+    "merge_consecutive_only": "連続したセグメントのみ統合できます。"
   },
   "status": {
     "pending": "\u5f85\u6a5f\u4e2d",
