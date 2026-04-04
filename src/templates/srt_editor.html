@@ -94,7 +94,7 @@
                                class="w-24 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
                         <span class="text-xs text-gray-400">→</span>
                         <input type="text" :value="formatTimeFull(seg.end)"
-                               @change="seg.end = parseTime($event.target.value); debounceSave()"
+                               @change="updateEnd(idx, $event.target.value)"
                                class="w-24 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
                         <span x-show="verifiedIndices.includes(idx)"
                               class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 cursor-help"
@@ -131,20 +131,15 @@
                 </p>
 
                 <!-- AI Suggestion -->
-                <div x-show="suggestions[idx]" x-transition class="mt-2 p-3 bg-purple-50 rounded-md">
-                    <p class="text-xs text-purple-600 font-medium mb-1">{{ t('srt_editor.suggestion') }}:</p>
-                    <p class="text-sm text-gray-800" x-text="suggestions[idx]?.text"></p>
-                    <p class="text-xs text-gray-500 mt-1" x-text="suggestions[idx]?.reason"></p>
-                    <div class="flex gap-2 mt-2">
-                        <button @click="acceptSuggestion(idx)"
-                                class="text-xs px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">
-                            {{ t('srt_editor.accept') }}
-                        </button>
-                        <button @click="dismissSuggestion(idx)"
-                                class="text-xs px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-                            {{ t('srt_editor.dismiss') }}
-                        </button>
-                    </div>
+                <div x-show="suggestions[idx]" x-transition class="mt-1 flex items-center gap-2">
+                    <span class="text-xs text-purple-600">{{ t('srt_editor.suggestion') }}:</span>
+                    <span class="text-sm text-purple-800 font-medium" x-text="suggestions[idx]?.text"></span>
+                    <button @click="acceptSuggestion(idx)"
+                            class="text-xs px-2 py-0.5 bg-purple-600 text-white rounded hover:bg-purple-700">
+                        {{ t('srt_editor.accept') }}
+                    </button>
+                    <button @click="dismissSuggestion(idx)"
+                            class="text-xs text-gray-400 hover:text-gray-600">✕</button>
                 </div>
 
                 <!-- Add segment button (between segments) -->
@@ -354,6 +349,16 @@ function srtEditor() {
             } catch (e) {
                 console.error('Failed to save glossary:', e);
             }
+        },
+
+        updateEnd(idx, value) {
+            const newEnd = this.parseTime(value);
+            this.segments[idx].end = newEnd;
+            // Link: update next segment's start to match
+            if (idx + 1 < this.segments.length) {
+                this.segments[idx + 1].start = newEnd;
+            }
+            this.debounceSave();
         },
 
         _clearSuggestions() {

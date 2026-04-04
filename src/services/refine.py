@@ -380,7 +380,7 @@ Target segment to improve:
 {target_text}
 
 {glossary_section}
-Return JSON: {{"text": "improved text", "reason": "what was changed and why"}}
+Return JSON: {{"text": "improved text"}}
 If no glossary corrections apply and no improvement is needed, return the original text unchanged."""
 
 
