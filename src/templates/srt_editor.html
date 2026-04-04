@@ -12,7 +12,7 @@
                 <span x-show="saving" class="text-xs text-gray-400">{{ t('srt_editor.saving') }}</span>
                 <span x-show="saveMsg && !saveError" x-transition class="text-xs text-green-600" x-text="saveMsg"></span>
                 <span x-show="saveMsg && saveError" x-transition class="text-xs text-red-600" x-text="saveMsg"></span>
-                <div class="relative" x-data="{ showGlossary: false }">
+                <div class="relative" x-data="{ showGlossary: false }" @glossary-saved.window="showGlossary = false">
                     <button @click="showGlossary = !showGlossary"
                             class="inline-flex items-center gap-1 px-3 py-2 bg-amber-100 text-amber-800 rounded-md text-sm font-medium hover:bg-amber-200 border border-amber-300"
                             style="height: 2.25rem;">
@@ -350,7 +350,9 @@ function srtEditor() {
                     body: JSON.stringify({glossary: this.glossary}),
                 });
                 this.glossarySaved = true;
-                setTimeout(() => this.glossarySaved = false, 2000);
+                setTimeout(() => { this.glossarySaved = false; }, 2000);
+                // Close the panel via the parent x-data scope
+                this.$dispatch('glossary-saved');
             } catch (e) {
                 console.error('Failed to save glossary:', e);
             }
