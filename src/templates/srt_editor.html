@@ -49,6 +49,9 @@
         </div>
     </div>
 
+    <!-- Audio player (hidden, controlled via JS) -->
+    <audio x-ref="audio" :src="'/api/jobs/{{ job.id }}/media'" preload="metadata"></audio>
+
     <!-- Loading -->
     <div x-show="loading" class="text-center py-12">
         <div class="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
@@ -61,8 +64,13 @@
             <div class="bg-white shadow rounded-lg p-4 border-l-4 transition-colors"
                  :class="verifiedIndices.includes(idx) ? 'border-yellow-400 bg-yellow-50' : 'border-transparent'">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
                         <span class="text-xs font-mono text-gray-400" x-text="'#' + (idx + 1)"></span>
+                        <button @click="playSegment(seg.start, seg.end)"
+                                class="text-gray-400 hover:text-blue-600 transition-colors p-0.5"
+                                :title="'Play ' + formatTime(seg.start)">
+                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
                         <span class="text-xs text-gray-500" x-text="formatTime(seg.start) + ' → ' + formatTime(seg.end)"></span>
                         <span x-show="verifiedIndices.includes(idx)"
                               class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 cursor-help"
@@ -133,7 +141,9 @@ function srtEditor() {
         saveError: false,
         reRefining: false,
         glossary: '',
+        playingIdx: null,
         _saveTimer: null,
+        _stopTimer: null,
 
         async loadSegments() {
             try {
@@ -255,6 +265,21 @@ function srtEditor() {
                 }
             }
             throw new Error('Timeout waiting for re-refine');
+        },
+
+        playSegment(start, end) {
+            const audio = this.$refs.audio;
+            if (!audio) return;
+            // Stop any current playback timer
+            if (this._stopTimer) { clearTimeout(this._stopTimer); this._stopTimer = null; }
+            audio.currentTime = start;
+            audio.play();
+            // Auto-stop at segment end
+            const duration = (end - start) * 1000;
+            this._stopTimer = setTimeout(() => {
+                audio.pause();
+                this._stopTimer = null;
+            }, duration);
         },
 
         formatTime(seconds) {
