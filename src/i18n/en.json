@@ -91,6 +91,7 @@
     "delete_key_confirm": "Delete {label} API key?",
     "llm_models": "LLM Models",
     "configure_models": "Configure models per purpose.",
+    "ollama_desc": "Connect to a local Ollama instance for LLM post-processing (refine, metadata, quiz). Transcription still uses OpenAI Whisper.",
     "quick_presets": "Quick Presets",
     "quality": "Quality",
     "balanced": "Balanced",
