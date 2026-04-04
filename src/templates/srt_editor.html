@@ -15,7 +15,8 @@
                 <div class="relative" x-data="{ showGlossary: false }">
                     <div class="flex items-center gap-1">
                         <button @click="reRefine()" :disabled="reRefining"
-                                class="inline-flex items-center px-3 py-2 bg-amber-100 text-amber-800 rounded-md text-sm font-medium hover:bg-amber-200 border border-amber-300 disabled:opacity-50 rounded-r-none">
+                                class="inline-flex items-center justify-center px-3 py-2 bg-amber-100 text-amber-800 rounded-md text-sm font-medium hover:bg-amber-200 border border-amber-300 disabled:opacity-50 rounded-r-none"
+                                style="min-width: 7rem; height: 2.25rem;">
                             <span x-show="!reRefining">{{ t('srt_editor.re_refine') }}</span>
                             <span x-show="reRefining" class="flex items-center gap-1">
                                 <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
@@ -23,7 +24,8 @@
                             </span>
                         </button>
                         <button @click="showGlossary = !showGlossary"
-                                class="inline-flex items-center px-2 py-2 bg-amber-100 text-amber-800 rounded-md text-sm hover:bg-amber-200 border border-amber-300 rounded-l-none border-l-0"
+                                class="inline-flex items-center px-2 bg-amber-100 text-amber-800 rounded-md text-sm hover:bg-amber-200 border border-amber-300 rounded-l-none border-l-0"
+                                style="height: 2.25rem;"
                                 :title="showGlossary ? 'Hide glossary' : 'Edit glossary'">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
