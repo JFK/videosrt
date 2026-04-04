@@ -354,7 +354,7 @@ function srtEditor() {
 
         autoResize(el) {
             el.style.height = 'auto';
-            el.style.height = el.scrollHeight + 'px';
+            el.style.height = Math.max(el.scrollHeight, 48) + 'px';
         },
     };
 }
