@@ -51,7 +51,7 @@
                 <div class="flex space-x-2">
                     <input type="text" x-model="ollamaUrl"
                            class="flex-1 rounded-md border-gray-300 text-sm p-2 border"
-                           placeholder="http://localhost:11434">
+                           placeholder="http://host.docker.internal:11434">
                     <button @click="saveOllamaUrl()"
                             class="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700">{{ t('settings.save') }}</button>
                     <button @click="testOllama()"
@@ -268,7 +268,7 @@ function settingsPage() {
             { id: 'google', label: 'Google (Gemini)', configured: false, masked: '', newKey: '', showKey: false, testResult: null, testError: '' },
         ],
         models: { openai: 'gpt-5.4', gemini: 'gemini-3-flash-preview', ollama: 'qwen3:latest' },
-        ollamaUrl: 'http://localhost:11434',
+        ollamaUrl: 'http://host.docker.internal:11434',
         ollamaTestResult: null,
         ollamaTestMsg: '',
         presetDescription: '',
@@ -314,7 +314,7 @@ function settingsPage() {
             // Load Ollama URL
             const ollamaRes = await fetch('/api/settings/ollama-url');
             const ollamaData = await ollamaRes.json();
-            this.ollamaUrl = ollamaData.url || 'http://localhost:11434';
+            this.ollamaUrl = ollamaData.url || 'http://host.docker.internal:11434';
             // Load general settings
             const generalRes = await fetch('/api/settings/general');
             this.generalSettings = await generalRes.json();

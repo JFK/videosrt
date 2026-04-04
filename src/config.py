@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     default_openai_model: str = "gpt-5.4"
     default_gemini_model: str = "gemini-3-flash-preview"
     default_ollama_model: str = "qwen3:latest"
-    default_ollama_base_url: str = "http://localhost:11434"
+    default_ollama_base_url: str = "http://host.docker.internal:11434"
 
     # Upload settings
     max_upload_size_gb: int = 10
