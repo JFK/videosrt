@@ -193,3 +193,59 @@ async def test_media_endpoint_returns_file(make_client):
         assert "audio" in resp.headers.get("content-type", "")
     finally:
         await _cleanup_job(make_client, job_id)
+
+
+# ---------------------------------------------------------------------------
+# Speaker download
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_download_srt_by_speaker(make_client):
+    """Download SRT filtered by speaker should return only matching segments."""
+    job_id = await _create_test_job(make_client)
+    try:
+        # Assign speaker to segments 0 and 2
+        async with make_client() as c:
+            resp = await c.put(
+                f"/api/jobs/{job_id}/speakers",
+                json={
+                    "speakers": ["Alice", "Bob"],
+                    "speaker_map": {"0": "Alice", "1": "Bob", "2": "Alice"},
+                },
+            )
+            assert resp.status_code == 200
+
+            # Download Alice's segments
+            resp = await c.get(f"/api/jobs/{job_id}/download?speaker=Alice")
+            assert resp.status_code == 200
+            content = resp.text
+            assert "Hello world" in content
+            assert "Third segment" in content
+            assert "Second segment" not in content
+
+            # Download non-existent speaker
+            resp = await c.get(f"/api/jobs/{job_id}/download?speaker=Nobody")
+            assert resp.status_code == 404
+    finally:
+        await _cleanup_job(make_client, job_id)
+
+
+@pytest.mark.asyncio
+async def test_download_srt_by_speaker_unicode_filename(make_client):
+    """Speaker download with non-ASCII names should not crash."""
+    job_id = await _create_test_job(make_client)
+    try:
+        async with make_client() as c:
+            await c.put(
+                f"/api/jobs/{job_id}/speakers",
+                json={"speakers": ["幸山"], "speaker_map": {"0": "幸山"}},
+            )
+            resp = await c.get(
+                f"/api/jobs/{job_id}/download",
+                params={"speaker": "幸山"},
+            )
+            assert resp.status_code == 200
+            assert "content-disposition" in resp.headers
+    finally:
+        await _cleanup_job(make_client, job_id)

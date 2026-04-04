@@ -301,11 +301,13 @@ async def _run_metadata_generation(
     api_key: str,
     custom_prompt: str | None = None,
     tone_references: str | None = None,
+    model: str | None = None,
 ) -> None:
     """Generate YouTube metadata using LLM and log cost."""
     from src.services.metadata import generate_youtube_metadata
 
-    model = await _get_model(session, job.provider)
+    if not model:
+        model = await _get_model(session, job.provider)
     result, input_tokens, output_tokens = await generate_youtube_metadata(
         srt_content, api_key, job.provider, model, custom_prompt, tone_references
     )

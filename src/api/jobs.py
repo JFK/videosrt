@@ -202,41 +202,89 @@ async def get_job_status(job_id: str, request: Request, session: AsyncSession = 
 
 
 @router.get("/{job_id}/download")
-async def download_srt(job_id: str, session: AsyncSession = Depends(get_session)):
-    job = await _get_job_or_404(session, job_id)
-    if not job.srt_path:
-        raise HTTPException(status_code=404, detail="SRT file not found")
-
-    srt_file = Path(job.srt_path).resolve()
-    if not srt_file.exists():
-        raise HTTPException(status_code=404, detail="SRT file not found on disk")
-
-    download_name = Path(_safe_filename(job.filename)).stem + ".srt"
-    return FileResponse(srt_file, filename=download_name, media_type="text/plain")
-
-
-@router.get("/{job_id}/download-vtt")
-async def download_vtt(job_id: str, session: AsyncSession = Depends(get_session)):
-    job = await _get_job_or_404(session, job_id)
-    if not job.srt_path:
-        raise HTTPException(status_code=404, detail="SRT file not found")
-
-    srt_file = Path(job.srt_path).resolve()
-    if not srt_file.exists():
-        raise HTTPException(status_code=404, detail="SRT file not found on disk")
-
-    from src.services.srt import srt_to_vtt
-
-    srt_content = srt_file.read_text(encoding="utf-8")
-    vtt_content = srt_to_vtt(srt_content)
-    download_name = Path(_safe_filename(job.filename)).stem + ".vtt"
+async def download_srt(
+    job_id: str,
+    speaker: str | None = None,
+    session: AsyncSession = Depends(get_session),
+):
+    import json as json_mod
+    from urllib.parse import quote
 
     from fastapi.responses import Response
 
+    from src.services.srt import generate_srt, parse_srt
+
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=404, detail="SRT file not found")
+
+    srt_file = Path(job.srt_path).resolve()
+    if not srt_file.exists():
+        raise HTTPException(status_code=404, detail="SRT file not found on disk")
+
+    stem = Path(_safe_filename(job.filename)).stem
+
+    if not speaker:
+        download_name = f"{stem}.srt"
+        return FileResponse(srt_file, filename=download_name, media_type="text/plain")
+
+    # Filter segments by speaker
+    speaker_map = json_mod.loads(job.speaker_map) if job.speaker_map else {}
+    segments = parse_srt(srt_file.read_text(encoding="utf-8"))
+    filtered = [seg for i, seg in enumerate(segments) if speaker_map.get(str(i)) == speaker]
+    if not filtered:
+        raise HTTPException(status_code=404, detail=f"No segments for speaker: {speaker}")
+
+    srt_content = generate_srt(filtered)
+    download_name = f"{stem}_{speaker}.srt"
+    encoded_name = quote(download_name)
+    return Response(
+        content=srt_content,
+        media_type="text/plain",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}"},
+    )
+
+
+@router.get("/{job_id}/download-vtt")
+async def download_vtt(
+    job_id: str,
+    speaker: str | None = None,
+    session: AsyncSession = Depends(get_session),
+):
+    import json as json_mod
+    from urllib.parse import quote
+
+    from fastapi.responses import Response
+
+    from src.services.srt import generate_vtt, parse_srt, srt_to_vtt
+
+    job = await _get_job_or_404(session, job_id)
+    if not job.srt_path:
+        raise HTTPException(status_code=404, detail="SRT file not found")
+
+    srt_file = Path(job.srt_path).resolve()
+    if not srt_file.exists():
+        raise HTTPException(status_code=404, detail="SRT file not found on disk")
+
+    stem = Path(_safe_filename(job.filename)).stem
+
+    if not speaker:
+        vtt_content = srt_to_vtt(srt_file.read_text(encoding="utf-8"))
+        download_name = f"{stem}.vtt"
+    else:
+        speaker_map = json_mod.loads(job.speaker_map) if job.speaker_map else {}
+        segments = parse_srt(srt_file.read_text(encoding="utf-8"))
+        filtered = [seg for i, seg in enumerate(segments) if speaker_map.get(str(i)) == speaker]
+        if not filtered:
+            raise HTTPException(status_code=404, detail=f"No segments for speaker: {speaker}")
+        vtt_content = generate_vtt(filtered)
+        download_name = f"{stem}_{speaker}.vtt"
+
+    encoded_name = quote(download_name)
     return Response(
         content=vtt_content,
         media_type="text/vtt",
-        headers={"Content-Disposition": f'attachment; filename="{download_name}"'},
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}"},
     )
 
 
@@ -284,17 +332,23 @@ async def generate_meta(
     custom_prompt = None
     fixed_footer = ""
     use_tone_ref = True
+    override_provider = None
+    override_model = None
     try:
         body = await request.json()
         custom_prompt = body.get("custom_prompt")
         fixed_footer = body.get("fixed_footer", "")
         use_tone_ref = body.get("use_tone_ref", True)
+        override_provider = body.get("provider")
+        override_model = body.get("model")
     except Exception:
         pass
 
     tone_references = await _get_tone_references(session) if use_tone_ref else None
 
-    background_tasks.add_task(_generate_meta_job, job_id, custom_prompt, fixed_footer, tone_references)
+    background_tasks.add_task(
+        _generate_meta_job, job_id, custom_prompt, fixed_footer, tone_references, override_provider, override_model
+    )
     return {"status": "generating_metadata"}
 
 
@@ -325,16 +379,20 @@ async def optimize_prompt(
     current_prompt = body.get("current_prompt", "")
     use_tone_ref = body.get("use_tone_ref", True)
 
+    override_provider = body.get("provider")
+    override_model = body.get("model")
+
     tone_references = await _get_tone_references(session) if use_tone_ref else None
 
-    api_key = await _get_credential(session, job.provider)
-    model = await _get_model(session, job.provider)
+    provider = override_provider or job.provider
+    api_key = await _get_credential(session, provider)
+    model = override_model or await _get_model(session, provider)
 
     optimized = await optimize_meta_prompt(
         current_prompt,
         context,
         api_key,
-        get_provider_name(job.provider),
+        get_provider_name(provider),
         model,
         tone_references,
     )
@@ -346,9 +404,11 @@ async def _generate_meta_job(
     custom_prompt: str | None = None,
     fixed_footer: str = "",
     tone_references: str | None = None,
+    override_provider: str | None = None,
+    override_model: str | None = None,
 ) -> None:
     """Background task: generate YouTube metadata from existing SRT."""
-    from src.services.transcribe import _get_credential, _run_metadata_generation
+    from src.services.transcribe import _get_credential, _get_model, _run_metadata_generation
 
     async with async_session() as session:
         result = await session.execute(select(Job).where(Job.id == job_id))
@@ -360,9 +420,11 @@ async def _generate_meta_job(
             job.status = "generating_metadata"
             await session.commit()
 
+            provider = override_provider or job.provider
             srt_content = Path(job.srt_path).read_text(encoding="utf-8")
-            api_key = await _get_credential(session, job.provider)
-            await _run_metadata_generation(job, session, srt_content, api_key, custom_prompt, tone_references)
+            api_key = await _get_credential(session, provider)
+            model = override_model or await _get_model(session, provider)
+            await _run_metadata_generation(job, session, srt_content, api_key, custom_prompt, tone_references, model)
 
             # Append fixed footer to description (not processed by AI)
             if fixed_footer and fixed_footer.strip() and job.youtube_description:
@@ -382,6 +444,7 @@ async def _generate_meta_job(
 @router.post("/{job_id}/generate-catchphrase")
 async def generate_catchphrase_endpoint(
     job_id: str,
+    request: Request,
     regenerate: bool = False,
     session: AsyncSession = Depends(get_session),
 ):
@@ -400,11 +463,22 @@ async def generate_catchphrase_endpoint(
     if job.catchphrases and not regenerate:
         return {"catchphrases": json_mod.loads(job.catchphrases), "cached": True}
 
+    # Parse optional provider/model override
+    override_provider = None
+    override_model = None
     try:
+        body = await request.json()
+        override_provider = body.get("provider")
+        override_model = body.get("model")
+    except Exception:
+        pass
+
+    try:
+        provider = override_provider or job.provider
         srt_content = Path(job.srt_path).read_text(encoding="utf-8")
-        api_key = await _get_credential(session, job.provider)
-        model = await _get_model(session, job.provider)
-        provider_name = get_provider_name(job.provider)
+        api_key = await _get_credential(session, provider)
+        model = override_model or await _get_model(session, provider)
+        provider_name = get_provider_name(provider)
 
         phrases, input_tokens, output_tokens = await generate_catchphrases(srt_content, api_key, provider_name, model)
 
@@ -433,6 +507,7 @@ async def generate_catchphrase_endpoint(
 @router.post("/{job_id}/generate-quiz")
 async def generate_quiz_endpoint(
     job_id: str,
+    request: Request,
     regenerate: bool = False,
     session: AsyncSession = Depends(get_session),
 ):
@@ -451,11 +526,22 @@ async def generate_quiz_endpoint(
     if job.quiz and not regenerate:
         return {"quiz": json_mod.loads(job.quiz), "cached": True}
 
+    # Parse optional provider/model override
+    override_provider = None
+    override_model = None
     try:
+        body = await request.json()
+        override_provider = body.get("provider")
+        override_model = body.get("model")
+    except Exception:
+        pass
+
+    try:
+        provider = override_provider or job.provider
         srt_content = Path(job.srt_path).read_text(encoding="utf-8")
-        api_key = await _get_credential(session, job.provider)
-        model = await _get_model(session, job.provider)
-        provider_name = get_provider_name(job.provider)
+        api_key = await _get_credential(session, provider)
+        model = override_model or await _get_model(session, provider)
+        provider_name = get_provider_name(provider)
 
         quiz, input_tokens, output_tokens = await generate_quiz(srt_content, api_key, provider_name, model)
 

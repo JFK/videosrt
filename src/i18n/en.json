@@ -78,7 +78,9 @@
     "saved_result": "Saved result",
     "loading": "Loading...",
     "correct": "correct",
-    "failed": "Failed:"
+    "failed": "Failed:",
+    "select_model": "Model",
+    "default_model": "Default"
   },
   "settings": {
     "title": "Settings",

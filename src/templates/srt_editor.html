@@ -51,9 +51,10 @@
                                placeholder="{{ t('srt_editor.speaker_add_placeholder') }}">
                         <div class="flex flex-wrap gap-1 mt-2">
                             <template x-for="(sp, i) in speakers" :key="i">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                                      :class="getSpeakerColor(sp).bg + ' ' + getSpeakerColor(sp).text">
                                     <span x-text="sp"></span>
-                                    <button @click="removeSpeaker(i)" class="text-teal-500 hover:text-red-500">✕</button>
+                                    <button @click="removeSpeaker(i)" class="opacity-50 hover:text-red-500">✕</button>
                                 </span>
                             </template>
                         </div>
@@ -65,25 +66,63 @@
                         </div>
                     </div>
                 </div>
-                <a href="/api/jobs/{{ job.id }}/download"
-                   class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 border border-gray-300">
-                    SRT
-                </a>
-                <a href="/api/jobs/{{ job.id }}/download-vtt"
-                   class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 border border-gray-300">
-                    VTT
-                </a>
+                <div class="relative" x-data="{ showSrtMenu: false }">
+                    <div class="inline-flex rounded-md border border-gray-300">
+                        <a href="/api/jobs/{{ job.id }}/download"
+                           class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 rounded-l-md">
+                            SRT
+                        </a>
+                        <button x-show="speakers.length > 0" @click="showSrtMenu = !showSrtMenu"
+                                class="inline-flex items-center px-1.5 py-2 bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 rounded-r-md border-l border-gray-300">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+                        </button>
+                    </div>
+                    <div x-show="showSrtMenu" x-transition @click.away="showSrtMenu = false"
+                         class="absolute right-0 top-full mt-1 bg-white shadow-lg rounded-lg border py-1 z-50 min-w-[10rem]">
+                        <template x-for="sp in speakers" :key="sp">
+                            <a :href="'/api/jobs/{{ job.id }}/download?speaker=' + encodeURIComponent(sp)"
+                               @click="showSrtMenu = false"
+                               class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100">
+                                <span class="inline-block w-2 h-2 rounded-full" :class="getSpeakerColor(sp).dot"></span>
+                                <span x-text="sp"></span>
+                            </a>
+                        </template>
+                    </div>
+                </div>
+                <div class="relative" x-data="{ showVttMenu: false }">
+                    <div class="inline-flex rounded-md border border-gray-300">
+                        <a href="/api/jobs/{{ job.id }}/download-vtt"
+                           class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 rounded-l-md">
+                            VTT
+                        </a>
+                        <button x-show="speakers.length > 0" @click="showVttMenu = !showVttMenu"
+                                class="inline-flex items-center px-1.5 py-2 bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 rounded-r-md border-l border-gray-300">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+                        </button>
+                    </div>
+                    <div x-show="showVttMenu" x-transition @click.away="showVttMenu = false"
+                         class="absolute right-0 top-full mt-1 bg-white shadow-lg rounded-lg border py-1 z-50 min-w-[10rem]">
+                        <template x-for="sp in speakers" :key="sp">
+                            <a :href="'/api/jobs/{{ job.id }}/download-vtt?speaker=' + encodeURIComponent(sp)"
+                               @click="showVttMenu = false"
+                               class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100">
+                                <span class="inline-block w-2 h-2 rounded-full" :class="getSpeakerColor(sp).dot"></span>
+                                <span x-text="sp"></span>
+                            </a>
+                        </template>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Audio player bar -->
-        <div x-show="!loading" class="mt-3 flex items-center gap-3 bg-white rounded-lg shadow-sm border px-3 py-2">
+        <div x-show="!loading" class="mt-3 flex flex-nowrap items-center gap-3 bg-white rounded-lg shadow-sm border px-3 py-2">
             <button @click="togglePlay()"
                     class="text-gray-600 hover:text-blue-600 transition-colors flex-shrink-0">
                 <svg x-show="!isPlaying" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <svg x-show="isPlaying" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
             </button>
-            <span class="text-xs font-mono text-gray-500 w-20 flex-shrink-0" x-text="formatTime(currentTime) + ' / ' + formatTime(audioDuration)"></span>
+            <span class="text-xs font-mono text-gray-500 whitespace-nowrap flex-shrink-0" x-text="formatTime(currentTime) + ' / ' + formatTime(audioDuration)"></span>
             <div class="flex-1 relative h-6 cursor-pointer group" @click="seekAudio($event)">
                 <div class="absolute top-1/2 -translate-y-1/2 w-full h-1.5 bg-gray-200 rounded-full">
                     <div class="h-full bg-blue-500 rounded-full transition-all" :style="'width:' + (audioDuration ? (currentTime/audioDuration*100) : 0) + '%'"></div>
@@ -108,7 +147,7 @@
             <div class="bg-white shadow rounded-lg p-4 border-l-4 transition-colors cursor-pointer"
                  :id="'seg-' + idx"
                  @click="if (!$event.target.closest('textarea, input, button, a, label')) playSegment(seg.start, seg.end)"
-                 :class="activeSegmentIdx === idx ? 'border-blue-500 bg-blue-50' : verifiedIndices.includes(idx) ? 'border-yellow-400 bg-yellow-50' : 'border-transparent'">
+                 :class="activeSegmentIdx === idx ? 'border-blue-500 bg-blue-50' : verifiedIndices.includes(idx) ? 'border-yellow-400 bg-yellow-50' : speakerMap[idx] ? getSpeakerColor(speakerMap[idx]).border : 'border-transparent'">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
                         <input type="checkbox" :value="idx" x-model.number="selected"
@@ -158,12 +197,14 @@
                 <!-- Speaker selection -->
                 <div x-show="speakers.length > 0" class="flex items-center gap-2 mb-1">
                     <template x-for="sp in speakers" :key="sp">
-                        <label class="inline-flex items-center gap-1 cursor-pointer">
+                        <label class="inline-flex items-center gap-1 cursor-pointer px-1.5 py-0.5 rounded-full text-xs"
+                               :class="speakerMap[idx] === sp ? getSpeakerColor(sp).bg + ' ' + getSpeakerColor(sp).text + ' font-medium' : 'text-gray-500'">
+                            <span class="inline-block w-2 h-2 rounded-full" :class="getSpeakerColor(sp).dot"></span>
                             <input type="radio" :name="'speaker-' + idx" :value="sp"
                                    :checked="speakerMap[idx] === sp"
                                    @change="setSpeaker(idx, sp)"
-                                   class="h-3 w-3 text-teal-600 focus:ring-teal-500">
-                            <span class="text-xs text-gray-600" x-text="sp"></span>
+                                   class="sr-only">
+                            <span x-text="sp"></span>
                         </label>
                     </template>
                     <button x-show="speakerMap[idx]" @click="setSpeaker(idx, null)"
@@ -244,6 +285,16 @@ function srtEditor() {
         speakers: [],
         speakerMap: {},
         speakerInput: '',
+        speakerColors: [
+            {bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300', dot: 'bg-blue-500'},
+            {bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-300', dot: 'bg-rose-500'},
+            {bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300', dot: 'bg-emerald-500'},
+            {bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300', dot: 'bg-amber-500'},
+            {bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300', dot: 'bg-purple-500'},
+            {bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-300', dot: 'bg-cyan-500'},
+            {bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300', dot: 'bg-orange-500'},
+            {bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-300', dot: 'bg-teal-500'},
+        ],
         isPlaying: false,
         currentTime: 0,
         audioDuration: 0,
@@ -431,12 +482,20 @@ function srtEditor() {
                 setTimeout(() => { this.segments[idx]._error = null; }, 3000);
                 return;
             }
+            const oldEnd = this.segments[idx].end;
             this.segments[idx].end = newEnd;
             this.segments[idx]._error = null;
-            if (idx + 1 < this.segments.length) {
+            // Only sync next segment's start when extending, not shrinking
+            if (idx + 1 < this.segments.length && newEnd > oldEnd) {
                 this.segments[idx + 1].start = newEnd;
             }
             this.debounceSave();
+        },
+
+        getSpeakerColor(speaker) {
+            const i = this.speakers.indexOf(speaker);
+            if (i < 0) return this.speakerColors[0];
+            return this.speakerColors[i % this.speakerColors.length];
         },
 
         addSpeaker() {

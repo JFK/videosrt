@@ -78,7 +78,9 @@
     "saved_result": "\u4fdd\u5b58\u6e08\u307f\u306e\u7d50\u679c",
     "loading": "\u8aad\u307f\u8fbc\u307f\u4e2d...",
     "correct": "\u6b63\u89e3",
-    "failed": "\u5931\u6557:"
+    "failed": "\u5931\u6557:",
+    "select_model": "\u30e2\u30c7\u30eb",
+    "default_model": "\u30c7\u30d5\u30a9\u30eb\u30c8"
   },
   "settings": {
     "title": "\u8a2d\u5b9a",

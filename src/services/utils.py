@@ -91,12 +91,22 @@ def parse_json_response(text: str, context: str = "") -> dict | list:
         raise RuntimeError(f"Invalid JSON in {context}: {e}. Response: {cleaned[:200]}")
 
 
+def _resolve_ollama_url(url: str) -> str:
+    """In Docker, rewrite localhost URLs to host.docker.internal."""
+    from pathlib import Path
+
+    if Path("/.dockerenv").exists():
+        url = url.replace("://localhost:", "://host.docker.internal:")
+        url = url.replace("://127.0.0.1:", "://host.docker.internal:")
+    return url
+
+
 def create_openai_compatible_client(provider: str, credential: str):
     """Create an AsyncOpenAI client for OpenAI or Ollama (OpenAI-compatible)."""
     import openai
 
     if provider == "ollama":
-        base = credential.rstrip("/")
+        base = _resolve_ollama_url(credential.rstrip("/"))
         if base.endswith("/v1"):
             base = base[:-3]
         return openai.AsyncOpenAI(base_url=f"{base}/v1", api_key="ollama")

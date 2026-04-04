@@ -1,7 +1,22 @@
 {% extends "base.html" %}
 {% block title %}{{ t('history.title') }} - VoiceSRT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-6">{{ t('history.heading') }}</h1>
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">{{ t('history.heading') }}</h1>
+    <div x-data="modelSelector()" x-init="init()" class="flex items-center gap-2">
+        <label class="text-xs text-gray-500">{{ t('history.select_model') }}:</label>
+        <select x-model="selectedProvider" @change="onProviderChange()" class="text-xs border-gray-300 rounded-md py-1 pl-2 pr-7">
+            <template x-for="p in providers" :key="p">
+                <option :value="p" x-text="p" :disabled="!hasKey[p]"></option>
+            </template>
+        </select>
+        <select x-model="selectedModel" class="text-xs border-gray-300 rounded-md py-1 pl-2 pr-7 max-w-[200px]">
+            <template x-for="m in currentModels" :key="m">
+                <option :value="m" x-text="m"></option>
+            </template>
+        </select>
+    </div>
+</div>
 
 <div class="bg-white shadow rounded-lg overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-200">
@@ -173,6 +188,51 @@ async function showMetaModal(jobId) {
         </div>` : ''}`;
 }
 
+function modelSelector() {
+    return {
+        providers: ['openai', 'gemini', 'ollama'],
+        available: {},
+        configured: {},
+        hasKey: {},
+        selectedProvider: '',
+        selectedModel: '',
+        currentModels: [],
+
+        async init() {
+            try {
+                const res = await fetch('/api/settings/available-models');
+                const data = await res.json();
+                this.available = data.available;
+                this.configured = data.configured;
+                this.hasKey = data.has_key;
+                // Pick first provider that has a key
+                for (const p of this.providers) {
+                    if (this.hasKey[p]) {
+                        this.selectedProvider = p;
+                        break;
+                    }
+                }
+                this.onProviderChange();
+            } catch (e) {
+                console.error('Failed to load models:', e);
+            }
+        },
+
+        onProviderChange() {
+            this.currentModels = this.available[this.selectedProvider] || [];
+            this.selectedModel = this.configured[this.selectedProvider] || this.currentModels[0] || '';
+        }
+    };
+}
+
+function getSelectedModel() {
+    const el = document.querySelector('[x-data*="modelSelector"]');
+    if (!el) return {};
+    const data = el._x_dataStack ? el._x_dataStack[0] : (el.__x ? el.__x.$data : null);
+    if (!data) return {};
+    return { provider: data.selectedProvider, model: data.selectedModel };
+}
+
 async function generateCatchphrase(jobId, regenerate = false) {
     const modal = document.getElementById('catchphrase-modal');
     const content = document.getElementById('catchphrase-content');
@@ -181,7 +241,12 @@ async function generateCatchphrase(jobId, regenerate = false) {
 
     try {
         const url = `/api/jobs/${jobId}/generate-catchphrase` + (regenerate ? '?regenerate=true' : '');
-        const res = await fetch(url, { method: 'POST' });
+        const modelOverride = getSelectedModel();
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(modelOverride),
+        });
         const data = await res.json();
 
         if (data.catchphrases) {
@@ -217,7 +282,12 @@ async function generateQuiz(jobId, regenerate = false) {
 
     try {
         const url = `/api/jobs/${jobId}/generate-quiz` + (regenerate ? '?regenerate=true' : '');
-        const res = await fetch(url, { method: 'POST' });
+        const modelOverride = getSelectedModel();
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(modelOverride),
+        });
         const data = await res.json();
 
         if (data.quiz) {
