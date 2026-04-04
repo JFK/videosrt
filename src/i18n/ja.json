@@ -1,7 +1,7 @@
 {
   "nav": {
     "upload": "\u30a2\u30c3\u30d7\u30ed\u30fc\u30c9",
-    "history": "アップロード履歴",
+    "history": "履歴",
     "costs": "\u30b3\u30b9\u30c8",
     "settings": "\u8a2d\u5b9a"
   },
@@ -33,6 +33,8 @@
     "processing": "\u51e6\u7406\u4e2d",
     "starting": "\u958b\u59cb\u4e2d...",
     "download_srt": "SRT\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+    "open_editor": "\u30a8\u30c7\u30a3\u30bf\u3092\u958b\u304f",
+    "go_to_history": "\u5c65\u6b74\u3078",
     "view_history": "アップロード履歴を見る",
     "upload_another": "\u5225\u306e\u30d5\u30a1\u30a4\u30eb\u3092\u30a2\u30c3\u30d7\u30ed\u30fc\u30c9",
     "remove": "\u524a\u9664",
@@ -183,7 +185,7 @@
     "generating": "\u751f\u6210\u4e2d...",
     "generated_metadata": "\u751f\u6210\u7d50\u679c",
     "regenerate": "\u518d\u751f\u6210",
-    "back_to_history": "アップロード履歴に戻る",
+    "back_to_history": "\u5c65\u6b74\u306b\u623b\u308b",
     "use_tone_ref": "参照投稿とトーンを合わせる",
     "tone_ref_link": "設定で参照投稿を編集",
     "label_title": "タイトル",
@@ -209,7 +211,7 @@
     "suggestion": "AI\u30b5\u30b8\u30a7\u30b9\u30c8",
     "accept": "\u63a1\u7528",
     "dismiss": "\u5374\u4e0b",
-    "back_to_history": "アップロード履歴に戻る",
+    "back_to_history": "\u5c65\u6b74\u306b\u623b\u308b",
     "re_refine": "再リファイン",
     "refining": "リファイン中...",
     "re_refine_done": "再リファインが完了しました"

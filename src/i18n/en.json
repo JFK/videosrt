@@ -1,7 +1,7 @@
 {
   "nav": {
     "upload": "Upload",
-    "history": "Uploads",
+    "history": "History",
     "costs": "Costs",
     "settings": "Settings"
   },
@@ -33,6 +33,8 @@
     "processing": "Processing",
     "starting": "Starting...",
     "download_srt": "Download SRT",
+    "open_editor": "Open Editor",
+    "go_to_history": "Go to History",
     "view_history": "View Uploads",
     "upload_another": "Upload Another",
     "remove": "Remove",
@@ -183,7 +185,7 @@
     "generating": "Generating...",
     "generated_metadata": "Generated Metadata",
     "regenerate": "Regenerate",
-    "back_to_history": "Back to Uploads",
+    "back_to_history": "Back to History",
     "use_tone_ref": "Match tone with reference posts",
     "tone_ref_link": "Edit reference posts in Settings",
     "label_title": "Title",
@@ -209,7 +211,7 @@
     "suggestion": "AI Suggestion",
     "accept": "Accept",
     "dismiss": "Dismiss",
-    "back_to_history": "Back to Uploads",
+    "back_to_history": "Back to History",
     "re_refine": "Re-refine",
     "refining": "Refining...",
     "re_refine_done": "Re-refine completed"
