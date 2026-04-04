@@ -224,7 +224,10 @@
     "cancel": "Cancel",
     "merge_consecutive_only": "Only consecutive segments can be merged.",
     "time_error": "Time error",
-    "exceeds_next": "End time exceeds next segment's end"
+    "exceeds_next": "End time exceeds next segment's end",
+    "speakers": "Speakers",
+    "speakers_label": "Speaker list",
+    "speaker_add_placeholder": "Enter name and press Enter"
   },
   "status": {
     "pending": "Pending",

@@ -35,6 +35,36 @@
                         <span x-show="glossarySaved" x-transition class="text-xs text-green-600">{{ t('srt_editor.saved') }}</span>
                     </div>
                 </div>
+                <div class="relative" x-data="{ showSpeakers: false }" @speakers-saved.window="showSpeakers = false">
+                    <button @click="showSpeakers = !showSpeakers"
+                            class="inline-flex items-center gap-1 px-3 py-2 bg-teal-100 text-teal-800 rounded-md text-sm font-medium hover:bg-teal-200 border border-teal-300"
+                            style="height: 2.25rem;">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        {{ t('srt_editor.speakers') }}
+                    </button>
+                    <div x-show="showSpeakers" x-transition @click.away="showSpeakers = false"
+                         class="absolute right-0 top-full mt-1 w-72 bg-white shadow-lg rounded-lg border p-3 z-50">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('srt_editor.speakers_label') }}</label>
+                        <input type="text" x-model="speakerInput"
+                               @keydown.enter.prevent="addSpeaker()"
+                               class="w-full rounded-md border-gray-300 text-xs p-2 border"
+                               placeholder="{{ t('srt_editor.speaker_add_placeholder') }}">
+                        <div class="flex flex-wrap gap-1 mt-2">
+                            <template x-for="(sp, i) in speakers" :key="i">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                                    <span x-text="sp"></span>
+                                    <button @click="removeSpeaker(i)" class="text-teal-500 hover:text-red-500">✕</button>
+                                </span>
+                            </template>
+                        </div>
+                        <div class="flex justify-end mt-2">
+                            <button @click="saveSpeakers()"
+                                    class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                {{ t('srt_editor.save') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <a href="/api/jobs/{{ job.id }}/download"
                    class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 border border-gray-300">
                     SRT
@@ -75,8 +105,9 @@
     <!-- Segments -->
     <div x-show="!loading" class="space-y-3">
         <template x-for="(seg, idx) in segments" :key="idx">
-            <div class="bg-white shadow rounded-lg p-4 border-l-4 transition-colors"
+            <div class="bg-white shadow rounded-lg p-4 border-l-4 transition-colors cursor-pointer"
                  :id="'seg-' + idx"
+                 @click="if (!$event.target.closest('textarea, input, button, a, label')) playSegment(seg.start, seg.end)"
                  :class="activeSegmentIdx === idx ? 'border-blue-500 bg-blue-50' : verifiedIndices.includes(idx) ? 'border-yellow-400 bg-yellow-50' : 'border-transparent'">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
@@ -88,14 +119,22 @@
                                 :title="'Play ' + formatTime(seg.start)">
                             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         </button>
-                        <!-- Editable timestamps -->
-                        <input type="text" :value="formatTimeFull(seg.start)"
-                               @change="seg.start = parseTime($event.target.value); debounceSave()"
-                               class="w-24 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
+                        <!-- Editable timestamps with ±0.1s controls -->
+                        <div class="inline-flex items-center gap-0.5">
+                            <button @click="nudgeTime(idx, 'start', -0.1)" class="text-gray-300 hover:text-gray-600 text-xs px-0.5">−</button>
+                            <input type="text" :value="formatTimeFull(seg.start)"
+                                   @change="seg.start = parseTime($event.target.value); debounceSave()"
+                                   class="w-20 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
+                            <button @click="nudgeTime(idx, 'start', 0.1)" class="text-gray-300 hover:text-gray-600 text-xs px-0.5">+</button>
+                        </div>
                         <span class="text-xs text-gray-400">→</span>
-                        <input type="text" :value="formatTimeFull(seg.end)"
-                               @change="updateEnd(idx, $event.target.value)"
-                               class="w-24 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
+                        <div class="inline-flex items-center gap-0.5">
+                            <button @click="nudgeTime(idx, 'end', -0.1)" class="text-gray-300 hover:text-gray-600 text-xs px-0.5">−</button>
+                            <input type="text" :value="formatTimeFull(seg.end)"
+                                   @change="updateEnd(idx, $event.target.value)"
+                                   class="w-20 text-xs font-mono text-gray-500 bg-transparent border-0 border-b border-dashed border-gray-300 focus:border-blue-500 focus:ring-0 p-0 text-center">
+                            <button @click="nudgeTime(idx, 'end', 0.1)" class="text-gray-300 hover:text-gray-600 text-xs px-0.5">+</button>
+                        </div>
                         <span x-show="verifiedIndices.includes(idx)"
                               class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 cursor-help"
                               :title="verifyReasons[idx] || ''">
@@ -114,6 +153,21 @@
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
                     </div>
+                </div>
+
+                <!-- Speaker selection -->
+                <div x-show="speakers.length > 0" class="flex items-center gap-2 mb-1">
+                    <template x-for="sp in speakers" :key="sp">
+                        <label class="inline-flex items-center gap-1 cursor-pointer">
+                            <input type="radio" :name="'speaker-' + idx" :value="sp"
+                                   :checked="speakerMap[idx] === sp"
+                                   @change="setSpeaker(idx, sp)"
+                                   class="h-3 w-3 text-teal-600 focus:ring-teal-500">
+                            <span class="text-xs text-gray-600" x-text="sp"></span>
+                        </label>
+                    </template>
+                    <button x-show="speakerMap[idx]" @click="setSpeaker(idx, null)"
+                            class="text-xs text-gray-300 hover:text-gray-500">✕</button>
                 </div>
 
                 <!-- Editable text -->
@@ -148,7 +202,7 @@
                 <!-- Add segment button (between segments) -->
                 <div class="flex justify-center -mb-2 mt-2">
                     <button @click="addSegmentAfter(idx)"
-                            class="text-gray-300 hover:text-blue-500 transition-colors text-xs flex items-center gap-1 opacity-0 hover:opacity-100 focus:opacity-100">
+                            class="text-gray-300 hover:text-blue-500 transition-colors text-xs flex items-center gap-1">
                         <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         {{ t('srt_editor.add_seg') }}
                     </button>
@@ -187,6 +241,9 @@ function srtEditor() {
         saveError: false,
         glossary: '',
         glossarySaved: false,
+        speakers: [],
+        speakerMap: {},
+        speakerInput: '',
         isPlaying: false,
         currentTime: 0,
         audioDuration: 0,
@@ -208,8 +265,10 @@ function srtEditor() {
                 for (const [k, v] of Object.entries(rawReasons)) {
                     this.verifyReasons[parseInt(k)] = v;
                 }
-                // Load job glossary
+                // Load job glossary and speakers
                 this.glossary = data.glossary || '';
+                this.speakers = data.speakers || [];
+                this.speakerMap = data.speaker_map || {};
             } catch (e) {
                 console.error(e);
             } finally {
@@ -354,6 +413,16 @@ function srtEditor() {
             }
         },
 
+        nudgeTime(idx, field, delta) {
+            const newVal = Math.max(0, Math.round((this.segments[idx][field] + delta) * 10) / 10);
+            if (field === 'end') {
+                this.updateEnd(idx, this.formatTimeFull(newVal));
+            } else {
+                this.segments[idx].start = newVal;
+                this.debounceSave();
+            }
+        },
+
         updateEnd(idx, value) {
             const newEnd = this.parseTime(value);
             // Check: cannot exceed next segment's end
@@ -368,6 +437,52 @@ function srtEditor() {
                 this.segments[idx + 1].start = newEnd;
             }
             this.debounceSave();
+        },
+
+        addSpeaker() {
+            const name = this.speakerInput.trim();
+            if (name && !this.speakers.includes(name)) {
+                this.speakers.push(name);
+                this.speakerInput = '';
+            }
+        },
+
+        removeSpeaker(i) {
+            const removed = this.speakers[i];
+            this.speakers.splice(i, 1);
+            // Clean up speaker_map entries for removed speaker
+            for (const [k, v] of Object.entries(this.speakerMap)) {
+                if (v === removed) delete this.speakerMap[k];
+            }
+        },
+
+        setSpeaker(idx, speaker) {
+            if (speaker) {
+                this.speakerMap = {...this.speakerMap, [idx]: speaker};
+            } else {
+                const m = {...this.speakerMap};
+                delete m[idx];
+                this.speakerMap = m;
+            }
+            this._debounceSaveSpeakers();
+        },
+
+        _debounceSaveSpeakers() {
+            if (this._speakerTimer) clearTimeout(this._speakerTimer);
+            this._speakerTimer = setTimeout(() => this.saveSpeakers(), 500);
+        },
+
+        async saveSpeakers() {
+            try {
+                await fetch(`/api/jobs/{{ job.id }}/speakers`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({speakers: this.speakers, speaker_map: this.speakerMap}),
+                });
+                this.$dispatch('speakers-saved');
+            } catch (e) {
+                console.error('Failed to save speakers:', e);
+            }
         },
 
         _clearSuggestions() {

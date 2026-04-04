@@ -507,6 +507,8 @@ async def get_segments(job_id: str, session: AsyncSession = Depends(get_session)
         "verified_indices": verified_indices,
         "verify_reasons": verify_reasons,
         "glossary": job.glossary or "",
+        "speakers": json_mod.loads(job.speakers) if job.speakers else [],
+        "speaker_map": json_mod.loads(job.speaker_map) if job.speaker_map else {},
     }
 
 
@@ -549,6 +551,21 @@ async def update_job_glossary(job_id: str, request: Request, session: AsyncSessi
     if len(glossary) > 5000:
         raise HTTPException(status_code=400, detail="Glossary too long. Max 5000 characters.")
     job.glossary = glossary.strip() if glossary else None
+    await session.commit()
+    return {"saved": True}
+
+
+@router.put("/{job_id}/speakers")
+async def update_speakers(job_id: str, request: Request, session: AsyncSession = Depends(get_session)):
+    """Update speaker list and per-segment speaker assignments."""
+    import json as json_mod
+
+    job = await _get_job_or_404(session, job_id)
+    body = await request.json()
+    speakers = body.get("speakers", [])
+    speaker_map = body.get("speaker_map", {})
+    job.speakers = json_mod.dumps(speakers, ensure_ascii=False) if speakers else None
+    job.speaker_map = json_mod.dumps(speaker_map, ensure_ascii=False) if speaker_map else None
     await session.commit()
     return {"saved": True}
 
