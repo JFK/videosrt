@@ -20,12 +20,19 @@
                         {{ t('srt_editor.glossary_label_short') }}
                     </button>
                     <div x-show="showGlossary" x-transition @click.away="showGlossary = false"
-                         class="absolute right-0 top-full mt-1 w-80 bg-white shadow-lg rounded-lg border p-3 z-50">
+                         class="absolute right-0 top-full mt-1 w-96 bg-white shadow-lg rounded-lg border p-3 z-50">
                         <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('srt_editor.glossary_label') }}</label>
-                        <textarea x-model="glossary" rows="5"
+                        <textarea x-model="glossary" rows="6"
                                   class="w-full rounded-md border-gray-300 text-xs p-2 border font-mono"
-                                  placeholder="VoiceSRT&#10;John Smith&#10;Kubernetes"></textarea>
+                                  placeholder="{{ t('srt_editor.glossary_placeholder') }}"></textarea>
                         <p class="text-xs text-gray-400 mt-1">{{ t('srt_editor.glossary_hint') }}</p>
+                        <div class="flex justify-end mt-2">
+                            <button @click="saveGlossary()"
+                                    class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                {{ t('srt_editor.save') }}
+                            </button>
+                        </div>
+                        <span x-show="glossarySaved" x-transition class="text-xs text-green-600">{{ t('srt_editor.saved') }}</span>
                     </div>
                 </div>
                 <a href="/api/jobs/{{ job.id }}/download"
@@ -181,6 +188,7 @@ function srtEditor() {
         saveMsg: '',
         saveError: false,
         glossary: '',
+        glossarySaved: false,
         isPlaying: false,
         currentTime: 0,
         audioDuration: 0,
@@ -202,15 +210,8 @@ function srtEditor() {
                 for (const [k, v] of Object.entries(rawReasons)) {
                     this.verifyReasons[parseInt(k)] = v;
                 }
-                // Load glossary (global + job)
-                const gRes = await fetch('/api/settings/glossary');
-                const gData = await gRes.json();
-                this.glossary = gData.glossary || '';
-                // Append job-specific glossary if available
-                const jobGlossary = data.glossary || '';
-                if (jobGlossary) {
-                    this.glossary = this.glossary ? this.glossary + '\n' + jobGlossary : jobGlossary;
-                }
+                // Load job glossary
+                this.glossary = data.glossary || '';
             } catch (e) {
                 console.error(e);
             } finally {
@@ -339,6 +340,20 @@ function srtEditor() {
                 audio.pause();
                 this._stopTimer = null;
             }, duration);
+        },
+
+        async saveGlossary() {
+            try {
+                await fetch(`/api/jobs/{{ job.id }}/glossary`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({glossary: this.glossary}),
+                });
+                this.glossarySaved = true;
+                setTimeout(() => this.glossarySaved = false, 2000);
+            } catch (e) {
+                console.error('Failed to save glossary:', e);
+            }
         },
 
         _clearSuggestions() {

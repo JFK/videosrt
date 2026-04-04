@@ -540,6 +540,19 @@ async def update_segments(job_id: str, request: Request, session: AsyncSession =
     return {"status": "saved", "segment_count": len(segments)}
 
 
+@router.put("/{job_id}/glossary")
+async def update_job_glossary(job_id: str, request: Request, session: AsyncSession = Depends(get_session)):
+    """Update the job-specific glossary."""
+    job = await _get_job_or_404(session, job_id)
+    body = await request.json()
+    glossary = body.get("glossary", "")
+    if len(glossary) > 5000:
+        raise HTTPException(status_code=400, detail="Glossary too long. Max 5000 characters.")
+    job.glossary = glossary.strip() if glossary else None
+    await session.commit()
+    return {"saved": True}
+
+
 @router.post("/{job_id}/segments/{index}/suggest")
 async def suggest_segment_endpoint(
     job_id: str,
@@ -571,24 +584,25 @@ async def suggest_segment_endpoint(
     model = await _get_model(session, job.provider)
     provider_name = get_provider_name(job.provider)
 
-    # Use custom glossary from request body if provided
-    custom_glossary = None
+    # Get global glossary from settings
+    from src.models import Setting
+
+    result = await session.execute(select(Setting).where(Setting.key == "glossary"))
+    glossary_setting = result.scalar_one_or_none()
+    global_glossary = glossary_setting.value if glossary_setting else ""
+
+    # Use job glossary from request body if provided, else from DB
+    job_glossary = None
     try:
         body = await request.json()
-        custom_glossary = body.get("glossary")
+        job_glossary = body.get("glossary")
     except Exception:
         pass
 
-    if custom_glossary is not None:
-        combined_glossary = custom_glossary
-    else:
-        from src.models import Setting
-
-        result = await session.execute(select(Setting).where(Setting.key == "glossary"))
-        glossary_setting = result.scalar_one_or_none()
-        global_glossary = glossary_setting.value if glossary_setting else ""
+    if job_glossary is None:
         job_glossary = job.glossary or ""
-        combined_glossary = "\n".join(filter(None, [global_glossary.strip(), job_glossary.strip()]))
+
+    combined_glossary = "\n".join(filter(None, [global_glossary.strip(), job_glossary.strip()]))
 
     # Context: 5 segments before/after
     ctx_before = segments[max(0, index - 5) : index]

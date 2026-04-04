@@ -402,7 +402,12 @@ async def suggest_segment(
 
     glossary_section = ""
     if glossary.strip():
-        glossary_section = f"Glossary:\n{glossary.strip()}"
+        glossary_section = (
+            "Glossary (apply these corrections and terms):\n"
+            "Lines with → mean: replace the left side with the right side.\n"
+            "Other lines are correct terms to preserve.\n\n"
+            f"{glossary.strip()}"
+        )
 
     prompt = SUGGEST_PROMPT.format(
         context=context,
