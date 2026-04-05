@@ -10,11 +10,11 @@
 ┌──────────────────▼──────────────────────────┐
 │  FastAPI (Python 3.11+, async/await)        │
 │  ├── API Routes (/api/jobs, /api/settings)  │
-│  ├── Page Routes (/, /history, /srt, /meta) │
+│  ├── Page Routes (/, /history, /srt, /meta, /costs) │
 │  ├── Jinja2 Templates (SSR + i18n)          │
 │  └── Background Tasks                       │
 │       ├── ffmpeg (audio extraction/chunking) │
-│       ├── Whisper / Gemini (transcription)   │
+│       ├── Whisper / Gemini / Ollama (transcription + LLM) │
 │       ├── LLM Refine + Verify               │
 │       └── LLM Metadata / Quiz / Catchphrase │
 └──────────────────┬──────────────────────────┘
@@ -57,7 +57,7 @@ Single-user tool, so SQLite is sufficient. Data persists via Docker volume mount
 
 ### Provider Abstraction
 
-Whisper and Gemini have different APIs but are abstracted behind a common interface in `transcribe.py`. The provider is selected per-job, and all downstream processing (refine, verify, metadata) uses the same provider's LLM.
+Whisper, Gemini, and Ollama have different APIs but are abstracted behind a common interface in `transcribe.py`. The provider is selected per-job for transcription (Whisper/Gemini only — Ollama lacks STT). LLM operations (refine, verify, metadata, suggest, catchphrase, quiz) can use any provider, with per-job model override support.
 
 ### Audio Chunking
 
@@ -78,7 +78,19 @@ Chunks are processed sequentially with timestamp offset accumulation.
 
 - API keys encrypted with Fernet symmetric encryption before DB storage
 - Filenames sanitized with regex to prevent path traversal
+- Content-Disposition headers use RFC 5987 UTF-8 encoding for non-ASCII filenames
 - PreToolUse hooks block `.env` modifications, detect hardcoded secrets and SQL injection
+
+### SRT Editor Architecture
+
+The SRT Editor is the most complex frontend component, combining multiple interaction patterns:
+
+- **HTMX**: Segment save (`PUT /api/jobs/{id}/segments`), AI suggest requests
+- **Alpine.js**: Editor state management, speaker assignment UI, segment operations (merge/delete/add), time nudge controls
+- **Audio playback**: `<audio>` element with click-to-play per segment, active segment highlighting
+- **Glossary-aware AI suggest**: Per-segment suggestions that consider surrounding context (±5 segments) and apply glossary corrections with highest priority
+
+Speaker data (names + per-segment map) is stored as JSON columns on the Job model, with a dedicated API endpoint for updates.
 
 ## Directory Structure
 
@@ -134,7 +146,7 @@ src/
 | id | UUID | Primary key |
 | filename | String | Sanitized upload filename |
 | status | String | Pipeline state (pending → completed/failed) |
-| provider | String | "whisper" or "gemini" |
+| provider | String | "whisper", "gemini", or "ollama" |
 | language | String? | Language hint (ja, en, zh, ko) |
 | srt_path | String? | Path to generated SRT file |
 | youtube_title | String? | Generated metadata |
@@ -147,6 +159,9 @@ src/
 | enable_verify | Boolean | Full-text verification enabled |
 | glossary | String? | Per-job glossary terms |
 | audio_duration | Float? | Duration in seconds |
+| speakers | JSON String? | Speaker name list |
+| speaker_map | JSON String? | Segment index → speaker name mapping |
+| model_override | String? | Per-job LLM model override |
 | error_message | String? | Error details (non-fatal errors) |
 
 ### Setting

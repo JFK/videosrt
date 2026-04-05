@@ -20,6 +20,11 @@ description: Frontend uses HTMX + Alpine.js + Jinja2 + Tailwind CDN. Do not intr
 - Conditional UI: `x-show`, two-way binding: `x-model`
 - Events: `@submit.prevent`, `@click`, `@change`
 
+## Dark mode
+- Strategy: class-based (`darkMode: 'class'` in Tailwind CDN config)
+- Toggle `dark` class on `<html>` via Alpine.js + localStorage
+- Use `dark:bg-*`, `dark:text-*` utilities — no build step required
+
 ## Do NOT
 - Add npm/yarn dependencies or build steps
 - Use JSX, TypeScript, or module bundlers
