@@ -182,6 +182,7 @@
     "fixed_footer_desc": "Always appended to the end of the description (links, SNS, etc). Not processed by AI.",
     "fixed_footer_placeholder": "\n---\nChannel: https://youtube.com/@mychannel\nTwitter: https://twitter.com/myhandle\n#hashtag1 #hashtag2",
     "prompt": "Prompt",
+    "llm_label": "LLM:",
     "optimize_with_ai": "Optimize with AI",
     "optimizing": "Optimizing...",
     "reset_to_default": "Reset to default",
