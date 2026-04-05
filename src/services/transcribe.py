@@ -314,7 +314,19 @@ async def _run_metadata_generation(
         srt_content, api_key, job.provider, model, custom_prompt, tone_references
     )
 
-    job.youtube_title = result.get("title", "")
+    raw_titles = result.get("titles", [])
+    titles = []
+    if isinstance(raw_titles, list):
+        for t in raw_titles:
+            if t is not None:
+                cleaned = " ".join(str(t).splitlines()).strip()
+                if cleaned:
+                    titles.append(cleaned)
+    if titles:
+        job.youtube_title = "\n".join(titles)
+    else:
+        raw_title = result.get("title", "")
+        job.youtube_title = " ".join(str(raw_title).splitlines()).strip() if raw_title else ""
     job.youtube_description = result.get("description", "")
     tags = result.get("tags", [])
     job.youtube_tags = json.dumps(tags, ensure_ascii=False)
